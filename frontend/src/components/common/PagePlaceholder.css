@@ -1,30 +1,33 @@
 .page-shell {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 22px;
 }
 
 .page-shell__hero {
-  background-color: var(--bg-surface);
+  background: linear-gradient(150deg, rgba(30, 25, 58, 0.88) 0%, rgba(17, 14, 35, 0.92) 100%);
+  backdrop-filter: blur(20px);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: 28px;
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-glass);
   display: flex;
   align-items: flex-start;
   gap: 18px;
 }
 
 .page-shell__icon-wrap {
-  width: 46px;
-  height: 46px;
-  border-radius: var(--radius-md);
-  background-color: var(--color-primary-soft);
-  color: var(--color-primary);
+  width: 48px;
+  height: 48px;
+  border-radius: 15px;
+  background: var(--neon-purple-soft);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  color: var(--neon-purple-bright);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: var(--glow-purple);
 }
 
 .page-shell__hero-copy {
@@ -36,21 +39,21 @@
 
 .page-shell__badge {
   align-self: flex-start;
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: 0.7rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--color-primary);
-  background-color: var(--color-primary-soft);
-  padding: 3px 9px;
+  letter-spacing: 0.08em;
+  color: var(--neon-cyan);
+  background: var(--neon-cyan-soft);
+  padding: 3px 10px;
   border-radius: 999px;
 }
 
 .page-shell__heading {
-  font-size: 1.3rem;
+  font-size: 1.35rem;
   font-weight: 650;
-  letter-spacing: -0.015em;
-  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  color: #ffffff;
 }
 
 .page-shell__description {
@@ -62,11 +65,12 @@
 .page-shell__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 20px;
+  gap: 18px;
 }
 
 .page-shell__card {
-  background-color: var(--bg-surface);
+  background: rgba(21, 18, 40, 0.82);
+  backdrop-filter: blur(18px);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   padding: 22px;
@@ -85,44 +89,35 @@
 
 .page-shell__card-title {
   font-size: 0.98rem;
-  font-weight: 600;
-  color: var(--text-primary);
+  font-weight: 650;
+  color: #ffffff;
 }
 
 .page-shell__card-tag {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 600;
-  color: var(--text-muted);
-  background-color: var(--bg-surface-subtle);
-  border: 1px solid var(--border-subtle);
-  padding: 2px 8px;
+  color: var(--neon-purple-bright);
+  background: var(--neon-purple-soft);
+  padding: 3px 9px;
   border-radius: 999px;
 }
 
 .page-shell__card-text {
-  font-size: 0.86rem;
+  font-size: 0.85rem;
   color: var(--text-secondary);
   line-height: 1.5;
 }
 
 .page-shell__slot {
   margin-top: auto;
-  padding-top: 8px;
-  height: 76px;
-  border-radius: var(--radius-sm);
+  height: 72px;
+  border-radius: 12px;
   border: 1px dashed var(--border-strong);
   background: repeating-linear-gradient(
     -45deg,
-    var(--bg-app),
-    var(--bg-app) 8px,
-    var(--bg-surface-subtle) 8px,
-    var(--bg-surface-subtle) 16px
+    rgba(255, 255, 255, 0.03),
+    rgba(255, 255, 255, 0.03) 8px,
+    rgba(168, 85, 247, 0.05) 8px,
+    rgba(168, 85, 247, 0.05) 16px
   );
-}
-
-@media (max-width: 640px) {
-  .page-shell__hero {
-    flex-direction: column;
-    padding: 20px;
-  }
 }

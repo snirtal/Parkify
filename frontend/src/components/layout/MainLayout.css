@@ -1,60 +1,43 @@
-.app-shell {
+.futuristic-shell {
+  position: relative;
   min-height: 100vh;
-  display: flex;
-  background-color: var(--bg-app);
-}
-
-.app-shell__viewport {
-  flex: 1;
-  min-width: 0;
-  margin-left: var(--sidebar-width);
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  transition: margin-left 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.app-shell--sidebar-collapsed .app-shell__viewport {
-  margin-left: var(--sidebar-collapsed-width);
+.futuristic-shell__ambient {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 52% 40% at 32% 28%, rgba(139, 92, 246, 0.11), transparent 70%),
+    radial-gradient(ellipse 40% 35% at 78% 24%, rgba(34, 211, 238, 0.08), transparent 70%);
 }
 
-.app-shell__content {
+.futuristic-shell__main {
+  position: relative;
+  z-index: 1;
   flex: 1;
-  padding: 28px;
+  padding: 20px 28px 32px;
 }
 
-.app-shell__container {
+.futuristic-shell__container {
   width: 100%;
-  max-width: 1360px;
+  max-width: 1520px;
   margin: 0 auto;
 }
 
-.app-shell__backdrop {
-  display: none;
+.futuristic-shell__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 48;
+  background: rgba(5, 4, 12, 0.65);
+  backdrop-filter: blur(4px);
 }
 
-@media (max-width: 1024px) {
-  .app-shell__viewport,
-  .app-shell--sidebar-collapsed .app-shell__viewport {
-    margin-left: 0;
-  }
-
-  .app-shell__content {
-    padding: 20px;
-  }
-
-  .app-shell__backdrop {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: 30;
-    background-color: rgba(15, 23, 42, 0.45);
-    backdrop-filter: blur(2px);
-  }
-}
-
-@media (max-width: 640px) {
-  .app-shell__content {
-    padding: 16px;
+@media (max-width: 680px) {
+  .futuristic-shell__main {
+    padding: 16px 16px 24px;
   }
 }

@@ -1,0 +1,224 @@
+.bottom-deck {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 16px;
+}
+
+.sentinel-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sentinel-card {
+  position: relative;
+  flex: 1;
+  padding: 18px 22px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(28, 24, 52, 0.86) 0%, rgba(18, 15, 36, 0.92) 100%);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-xs);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sentinel-card__handle {
+  align-self: center;
+  width: 28px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+  margin-bottom: 2px;
+}
+
+.sentinel-card__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sentinel-card__tag {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #e9d5ff;
+}
+
+.sentinel-card__sim {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--neon-cyan);
+}
+
+.sentinel-card__text {
+  font-size: 0.9rem;
+  line-height: 1.58;
+  color: var(--text-primary);
+}
+
+.sentinel-card__cursor {
+  display: inline-block;
+  width: 2px;
+  height: 13px;
+  margin-left: 4px;
+  vertical-align: middle;
+  background: var(--neon-cyan);
+}
+
+/* Plasma Waveform Strip */
+.waveform-bar {
+  height: 54px;
+  padding: 0 14px 0 18px;
+  border-radius: 18px;
+  background: rgba(18, 15, 35, 0.92);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.waveform-bar__visual {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.waveform-bar__orb {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  background: radial-gradient(circle at 35% 35%, #67e8f9, #a855f7 60%, #3b0764 100%);
+  box-shadow: 0 0 16px rgba(168, 85, 247, 0.55);
+  opacity: 0.5;
+}
+
+.waveform-bar__orb--live {
+  opacity: 1;
+}
+
+.waveform-bar__svg {
+  flex: 1;
+  height: 30px;
+}
+
+.waveform-bar__controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.waveform-bar__status {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.waveform-bar__btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  border: none;
+  background: #ffffff;
+  color: #ef4444;
+  font-size: 0.68rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Security Camera Card */
+.security-card {
+  padding: 20px;
+  border-radius: 24px;
+  background: linear-gradient(155deg, rgba(34, 30, 62, 0.9) 0%, rgba(20, 17, 39, 0.95) 100%);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.security-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.security-card__title {
+  font-size: 1.14rem;
+  font-weight: 650;
+  color: #ffffff;
+  letter-spacing: -0.015em;
+}
+
+.security-card__sub {
+  margin-top: 6px;
+  font-size: 0.84rem;
+  line-height: 1.48;
+  color: var(--text-secondary);
+}
+
+.security-card__cam {
+  flex-shrink: 0;
+  filter: drop-shadow(0 8px 18px rgba(244, 63, 94, 0.22));
+}
+
+.security-card__cta {
+  width: 100%;
+  padding: 7px;
+  border-radius: 16px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-secondary);
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.security-card__cta:hover {
+  border-color: rgba(244, 63, 94, 0.45);
+  background: rgba(244, 63, 94, 0.1);
+  color: #ffffff;
+}
+
+.security-card__cta--active {
+  border-color: var(--neon-cyan);
+  background: var(--neon-cyan-soft);
+  color: #ffffff;
+}
+
+.security-card__cta-pill {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 11px;
+  background: #ffffff;
+  color: var(--text-dark);
+  font-size: 0.76rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.security-card__cta-label {
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+@media (max-width: 860px) {
+  .bottom-deck {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
