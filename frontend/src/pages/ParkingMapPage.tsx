@@ -1,4 +1,5 @@
 import { lazy, Suspense, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { SpotInspectorPanel } from '../components/dashboard'
 import { ParkingSearchBar } from '../components/parking-map/ParkingSearchBar'
 import { matchBayQuery } from '../components/parking-map/searchUtils'
@@ -11,13 +12,27 @@ const IsometricGarage3D = lazy(() =>
   })),
 )
 
+const DEFAULT_BAY_ID = 'bay-p204'
+
 export function ParkingMapPage() {
-  const [selectedBayId, setSelectedBayId] = useState<string>('bay-p204')
+  const [searchParams, setSearchParams] = useSearchParams()
   const [searchQuery, setSearchQuery] = useState<string>('')
 
-  const selectedBay =
-    SMART_PARKING_DATA.bays.find((bay) => bay.id === selectedBayId) ??
-    SMART_PARKING_DATA.bays[0]
+  const bayParam = searchParams.get('bay')
+
+  const selectedBay = useMemo(() => {
+    if (bayParam) {
+      const normalized = bayParam.trim().toLowerCase()
+      const matched = SMART_PARKING_DATA.bays.find(
+        (bay) => bay.code.toLowerCase() === normalized || bay.id.toLowerCase() === normalized,
+      )
+      if (matched) return matched
+    }
+    return (
+      SMART_PARKING_DATA.bays.find((bay) => bay.id === DEFAULT_BAY_ID) ??
+      SMART_PARKING_DATA.bays[0]
+    )
+  }, [bayParam])
 
   const matchedBayIds = useMemo(() => {
     if (!searchQuery.trim()) return null
@@ -27,10 +42,17 @@ export function ParkingMapPage() {
     return new Set(matching)
   }, [searchQuery])
 
+  const handleSelectBay = (bayId: string) => {
+    const target = SMART_PARKING_DATA.bays.find((b) => b.id === bayId)
+    if (target) {
+      setSearchParams({ bay: target.code }, { replace: true })
+    }
+  }
+
   const handleSelectByCode = (bayCode: string) => {
     const target = SMART_PARKING_DATA.bays.find((b) => b.code === bayCode)
     if (target) {
-      setSelectedBayId(target.id)
+      setSearchParams({ bay: target.code }, { replace: true })
     }
   }
 
@@ -42,7 +64,7 @@ export function ParkingMapPage() {
           selectedBayId={selectedBay.id}
           query={searchQuery}
           onQueryChange={setSearchQuery}
-          onSelectBay={setSelectedBayId}
+          onSelectBay={handleSelectBay}
         />
 
         <Suspense
@@ -59,7 +81,7 @@ export function ParkingMapPage() {
             bays={SMART_PARKING_DATA.bays}
             selectedBayId={selectedBay.id}
             snapshotTimestamp={SMART_PARKING_DATA.snapshotTimestamp}
-            onSelectBay={setSelectedBayId}
+            onSelectBay={handleSelectBay}
             expanded
             matchedBayIds={matchedBayIds}
           />
