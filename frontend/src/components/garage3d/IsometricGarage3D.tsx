@@ -1,6 +1,7 @@
 import { OrbitControls, OrthographicCamera } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
 import { Component, type ReactNode, useMemo, useRef, useState } from 'react'
+import type { OrthographicCamera as ThreeOrthographicCamera } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { BayStatus, ParkingBay } from '../../types/parking'
 import { GarageArchitecture3D } from './GarageArchitecture3D'
@@ -14,6 +15,7 @@ export interface IsometricGarage3DProps {
   snapshotTimestamp: string
   onSelectBay: (bayId: string) => void
   expanded?: boolean
+  matchedBayIds?: ReadonlySet<string> | null
 }
 
 type StatusFilter = 'all' | BayStatus
@@ -66,17 +68,17 @@ export function IsometricGarage3D({
   snapshotTimestamp,
   onSelectBay,
   expanded = false,
+  matchedBayIds = null,
 }: IsometricGarage3DProps) {
   const selectedBayObj = bays.find((b) => b.id === selectedBayId)
-  const [activeDeck, setActiveDeck] = useState<'P2' | 'P1'>(selectedBayObj?.deck ?? 'P2')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [cameraZoom, setCameraZoom] = useState(DEFAULT_ZOOM)
+  const cameraRef = useRef<ThreeOrthographicCamera | null>(null)
   const controlsRef = useRef<OrbitControlsImpl | null>(null)
 
   const webglAvailable = useMemo(() => canUseWebGL(), [])
 
-  const currentDeck =
-    selectedBayObj && selectedBayObj.deck !== activeDeck ? selectedBayObj.deck : activeDeck
+  const currentDeck: 'P2' | 'P1' = selectedBayObj?.deck ?? 'P2'
 
   const deckBays = useMemo(
     () => bays.filter((bay) => bay.deck === currentDeck),
@@ -93,24 +95,38 @@ export function IsometricGarage3D({
   }, [deckBays])
 
   const handleDeckSwitch = (deck: 'P2' | 'P1') => {
-    setActiveDeck(deck)
-    const firstOnDeck = bays.find((b) => b.deck === deck)
-    if (firstOnDeck) {
-      onSelectBay(firstOnDeck.id)
+    const firstMatchingFilter =
+      statusFilter !== 'all'
+        ? bays.find((b) => b.deck === deck && b.status === statusFilter)
+        : undefined
+    const targetBay = firstMatchingFilter ?? bays.find((b) => b.deck === deck)
+    if (targetBay) {
+      onSelectBay(targetBay.id)
     }
   }
 
+  const applyCameraZoom = (nextZoom: number) => {
+    setCameraZoom(nextZoom)
+    if (cameraRef.current) {
+      cameraRef.current.zoom = nextZoom
+      cameraRef.current.updateProjectionMatrix()
+    }
+    controlsRef.current?.update()
+  }
+
   const handleZoomIn = () => {
-    setCameraZoom((prev) => Math.min(prev + 6, MAX_ZOOM))
+    const liveZoom = cameraRef.current?.zoom ?? cameraZoom
+    applyCameraZoom(Math.min(Math.round(liveZoom + 6), MAX_ZOOM))
   }
 
   const handleZoomOut = () => {
-    setCameraZoom((prev) => Math.max(prev - 6, MIN_ZOOM))
+    const liveZoom = cameraRef.current?.zoom ?? cameraZoom
+    applyCameraZoom(Math.max(Math.round(liveZoom - 6), MIN_ZOOM))
   }
 
   const handleResetView = () => {
-    setCameraZoom(DEFAULT_ZOOM)
     controlsRef.current?.reset()
+    applyCameraZoom(DEFAULT_ZOOM)
   }
 
   const fallbackGrid = (
@@ -221,6 +237,7 @@ export function IsometricGarage3D({
               <StudioEnvironment3D />
 
               <OrthographicCamera
+                ref={cameraRef}
                 makeDefault
                 position={[15.2, 13.5, 15.8]}
                 zoom={cameraZoom}
@@ -261,7 +278,10 @@ export function IsometricGarage3D({
                 const x = startX + bay.slotIndex * spacingX
                 const z = bay.row === 'north' ? -3.55 : 4.25
                 const rotationY = bay.row === 'north' ? 0 : Math.PI
-                const isDimmed = statusFilter !== 'all' && bay.status !== statusFilter
+                const filteredOutByStatus = statusFilter !== 'all' && bay.status !== statusFilter
+                const filteredOutBySearch =
+                  matchedBayIds !== null && !matchedBayIds.has(bay.id)
+                const isDimmed = filteredOutByStatus || filteredOutBySearch
 
                 return (
                   <ParkingBay3D

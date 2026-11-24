@@ -334,10 +334,13 @@
 
 @media (max-width: 768px) {
   .garage-stage {
-    height: 400px;
+    height: 430px;
   }
 
   .garage-stage__bay-rail {
-    display: none;
+    bottom: 62px;
+    left: 12px;
+    right: 60px;
+    max-width: none;
   }
 }

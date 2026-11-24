@@ -1,5 +1,7 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { SpotInspectorPanel } from '../components/dashboard'
+import { ParkingSearchBar } from '../components/parking-map/ParkingSearchBar'
+import { matchBayQuery } from '../components/parking-map/searchUtils'
 import { SMART_PARKING_DATA } from '../data/mockParkingData'
 import './DashboardPage.css'
 
@@ -11,10 +13,19 @@ const IsometricGarage3D = lazy(() =>
 
 export function ParkingMapPage() {
   const [selectedBayId, setSelectedBayId] = useState<string>('bay-p204')
+  const [searchQuery, setSearchQuery] = useState<string>('')
 
   const selectedBay =
     SMART_PARKING_DATA.bays.find((bay) => bay.id === selectedBayId) ??
     SMART_PARKING_DATA.bays[0]
+
+  const matchedBayIds = useMemo(() => {
+    if (!searchQuery.trim()) return null
+    const matching = SMART_PARKING_DATA.bays
+      .filter((bay) => matchBayQuery(bay, searchQuery))
+      .map((bay) => bay.id)
+    return new Set(matching)
+  }, [searchQuery])
 
   const handleSelectByCode = (bayCode: string) => {
     const target = SMART_PARKING_DATA.bays.find((b) => b.code === bayCode)
@@ -26,6 +37,14 @@ export function ParkingMapPage() {
   return (
     <div className="cyber-dashboard">
       <div className="cyber-dashboard__stage-col">
+        <ParkingSearchBar
+          bays={SMART_PARKING_DATA.bays}
+          selectedBayId={selectedBay.id}
+          query={searchQuery}
+          onQueryChange={setSearchQuery}
+          onSelectBay={setSelectedBayId}
+        />
+
         <Suspense
           fallback={
             <div
@@ -42,6 +61,7 @@ export function ParkingMapPage() {
             snapshotTimestamp={SMART_PARKING_DATA.snapshotTimestamp}
             onSelectBay={setSelectedBayId}
             expanded
+            matchedBayIds={matchedBayIds}
           />
         </Suspense>
       </div>
