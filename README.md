@@ -14,8 +14,11 @@ Parkify is a real-time smart parking management platform for monitoring 3D garag
 - Facility Settings view for configuring facility profile, pricing tiers, and notification preferences with validation, header synchronization, and `localStorage` persistence.
 - Contextual side inspector panel featuring a rotatable 3D vehicle turntable preview for occupied bays, interactive occupancy charts, zone capacity breakdowns, and gate logs derived from a unified simulated dataset.
 - Client-side routing via React Router for Dashboard, Parking Map, Active Sessions, Reservations, Analytics, and Settings views.
+- Flask backend foundation with application factory, YAML and environment-based configuration, centralized logging, JSON error handling, CORS for local frontend development, and a health-check API.
 
 ## Quickstart
+
+### Frontend
 
 Install frontend dependencies and start the development server:
 
@@ -33,6 +36,49 @@ npm run lint
 npm run build
 ```
 
+### Backend
+
+Create and activate a virtual environment, then install Python dependencies from the repository root:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Optional: copy the environment template and adjust values:
+
+```bash
+cp .env.example .env
+```
+
+Start the Flask API (defaults to `http://127.0.0.1:5001`):
+
+```bash
+python app.py
+```
+
+Run backend tests:
+
+```bash
+pytest
+```
+
 ## API Examples
 
-Backend API endpoints are not yet implemented.
+Health check:
+
+```bash
+curl -s http://127.0.0.1:5001/api/health
+```
+
+Example response:
+
+```json
+{
+  "status": "ok",
+  "service": "Parkify",
+  "environment": "development",
+  "version": "0.1.0"
+}
+```

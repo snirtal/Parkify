@@ -1,0 +1,109 @@
+"""YAML and environment-variable configuration loader."""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+from typing import Any
+
+import yaml
+from dotenv import load_dotenv
+
+CONFIG_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = CONFIG_DIR.parent
+
+ENV_ALIASES = {
+    "dev": "development",
+    "development": "development",
+    "prod": "production",
+    "production": "production",
+}
+
+ENV_TO_FILE = {
+    "development": "dev.yaml",
+    "production": "prod.yaml",
+}
+
+
+def resolve_environment(explicit: str | None = None) -> str:
+    """Normalize the active environment name."""
+    raw = (explicit or os.getenv("PARKIFY_ENV") or "development").strip().lower()
+    return ENV_ALIASES.get(raw, "development")
+
+
+def _deep_get(data: dict[str, Any], *keys: str, default: Any = None) -> Any:
+    current: Any = data
+    for key in keys:
+        if not isinstance(current, dict) or key not in current:
+            return default
+        current = current[key]
+    return current
+
+
+def _parse_bool(value: str) -> bool:
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _parse_origins(value: str) -> list[str]:
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def load_yaml_config(environment: str) -> dict[str, Any]:
+    """Load the YAML configuration file for the given environment."""
+    filename = ENV_TO_FILE.get(environment, "dev.yaml")
+    config_path = CONFIG_DIR / filename
+    if not config_path.exists():
+        raise FileNotFoundError(f"Configuration file not found: {config_path}")
+
+    with config_path.open("r", encoding="utf-8") as handle:
+        data = yaml.safe_load(handle) or {}
+
+    if not isinstance(data, dict):
+        raise ValueError(f"Invalid configuration format in {config_path}")
+    return data
+
+
+def apply_env_overrides(raw: dict[str, Any]) -> dict[str, Any]:
+    """
+    Overlay environment variables on top of YAML values.
+
+    Sensitive and runtime values are expected from the environment when present.
+    """
+    app = dict(raw.get("app") or {})
+    logging_cfg = dict(raw.get("logging") or {})
+    cors = dict(raw.get("cors") or {})
+
+    if secret := os.getenv("SECRET_KEY"):
+        app["secret_key"] = secret
+    if host := os.getenv("HOST"):
+        app["host"] = host
+    if port := os.getenv("PORT"):
+        app["port"] = int(port)
+    if debug := os.getenv("DEBUG"):
+        app["debug"] = _parse_bool(debug)
+    if log_level := os.getenv("LOG_LEVEL"):
+        logging_cfg["level"] = log_level.upper()
+    if cors_origins := os.getenv("CORS_ORIGINS"):
+        cors["origins"] = _parse_origins(cors_origins)
+
+    return {
+        "app": app,
+        "logging": logging_cfg,
+        "cors": cors,
+        "raw": raw,
+    }
+
+
+def load_config(environment: str | None = None) -> dict[str, Any]:
+    """Load dotenv, YAML config, and environment overrides."""
+    load_dotenv(PROJECT_ROOT / ".env")
+    resolved = resolve_environment(environment)
+    yaml_data = load_yaml_config(resolved)
+    merged = apply_env_overrides(yaml_data)
+    merged["environment"] = resolved
+    return merged
+
+
+def get_nested(config: dict[str, Any], *keys: str, default: Any = None) -> Any:
+    """Convenience accessor used by settings construction."""
+    return _deep_get(config, *keys, default=default)
