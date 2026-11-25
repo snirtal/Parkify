@@ -1,4 +1,4 @@
-FROM python:3.13-slim
+FROM python:3.13-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -31,3 +31,15 @@ USER parkify
 EXPOSE 5001
 
 ENTRYPOINT ["python", "/entrypoint.py"]
+
+FROM runtime AS test
+
+USER root
+COPY requirements-dev.txt .
+RUN pip install --no-cache-dir -r requirements-dev.txt
+COPY tests ./tests
+RUN chown -R parkify:parkify /app
+USER parkify
+
+ENTRYPOINT ["python", "-m", "pytest"]
+CMD ["-v", "-o", "cache_dir=/tmp/pytest-cache"]

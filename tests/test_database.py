@@ -7,76 +7,12 @@ they roll back every row they insert.
 
 from __future__ import annotations
 
-import os
-
 import pytest
-from alembic import command
-from alembic.config import Config
-from dotenv import load_dotenv
-from sqlalchemy import create_engine, select, text
+from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from sqlalchemy.pool import NullPool
 
-from config.database import normalize_database_url
 from repositories.seed import CLOCK, seed_database
-
-load_dotenv()
-
-_PLACEHOLDERS = ("USER:PASSWORD", "ep-example")
-
-
-def _raw(name: str) -> str:
-    return os.getenv(name, "").strip()
-
-
-def _usable_test_url() -> str:
-    raw = _raw("TEST_DATABASE_URL")
-    if not raw or any(marker in raw for marker in _PLACEHOLDERS):
-        pytest.skip(
-            "SKIPPED: TEST_DATABASE_URL is not configured. Create an isolated "
-            "Neon branch and set TEST_DATABASE_URL before running database "
-            "integration tests."
-        )
-    test_url = normalize_database_url(raw)
-    primary = normalize_database_url(_raw("DATABASE_URL"))
-    migration = normalize_database_url(_raw("MIGRATION_DATABASE_URL"))
-    if test_url in {primary, migration} - {""}:
-        pytest.skip(
-            "SKIPPED: TEST_DATABASE_URL matches the primary database. "
-            "Use a separate Neon branch so tests cannot change primary data."
-        )
-    return test_url
-
-
-@pytest.fixture(scope="module")
-def migrated_engine():
-    """Apply migrations to the isolated test branch. Never drops data."""
-    url = _usable_test_url()
-    os.environ["MIGRATION_DATABASE_URL"] = url
-    command.upgrade(Config("alembic.ini"), "head")
-    engine = create_engine(url, poolclass=NullPool, future=True)
-    yield engine
-    engine.dispose()
-
-
-@pytest.fixture()
-def db_session(migrated_engine):
-    """A transaction that is always rolled back, including seed commits."""
-    connection = migrated_engine.connect()
-    transaction = connection.begin()
-    session = Session(
-        bind=connection,
-        autoflush=False,
-        expire_on_commit=False,
-        join_transaction_mode="create_savepoint",
-    )
-    try:
-        yield session
-    finally:
-        session.close()
-        transaction.rollback()
-        connection.close()
 
 
 def test_database_connection(migrated_engine) -> None:

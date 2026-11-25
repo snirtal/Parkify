@@ -44,7 +44,7 @@ Create and activate a virtual environment, then install Python dependencies from
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
 Copy the environment template and replace the placeholders with Neon connection strings. Do not commit `.env`.
@@ -121,6 +121,40 @@ Timestamps are stored as facility-local values without a time zone so they match
 
 The seed snapshot is 1 facility, 2 floors, 4 zones, 24 spots, 22 vehicles, 16 sessions (14 active, 2 completed), 6 reservations, and 6 gate events.
 
+## Repositories
+
+The `repositories/` package is the data-access layer. It is independent of Flask. A caller supplies a SQLAlchemy session, and `build_repositories(session)` returns the PostgreSQL repositories for that session. Repositories stage inserts, updates, and deletes. They do not commit or roll back, so a later service can change several entities in one transaction.
+
+Occupancy is still derived. Spot repositories do not read or write a status column.
+
+```python
+from repositories.factory import build_repositories
+
+repos = build_repositories(session)
+vehicle = repos.vehicles.get_by_plate("VEL-204X")
+active = repos.sessions.list_active()
+overlap = repos.reservations.list_overlapping(spot_id, starts_at, ends_at)
+page = repos.gate_activities.list_page(direction="entry", limit=20, offset=0)
+session.commit()
+```
+
+`session.commit()` belongs to the caller. Database errors are logged by exception type and raised as `RepositoryError`, without the connection string.
+
+Run the full test suite from the repository root. Database tests use `TEST_DATABASE_URL` and roll back their transaction. They are skipped when that URL is missing or points at the same Neon endpoint and database as `DATABASE_URL` or `MIGRATION_DATABASE_URL`, including the difference between a pooled host and its direct host.
+
+```bash
+source .venv/bin/activate
+pytest -v
+```
+
+Run the same suite in Docker with the separate test image. `docker compose up` does not start it, and it is not the running backend container. The command builds the `test` target, passes the database URLs from `.env`, and removes the container when pytest exits:
+
+```bash
+docker compose --profile test run --rm --no-deps -T --build backend-test
+```
+
+Database tests inside that container still use only `TEST_DATABASE_URL`. They skip when it is missing or points at the same Neon endpoint and database as `DATABASE_URL` or `MIGRATION_DATABASE_URL`. The running backend receives `DATABASE_URL` and `SECRET_KEY` only. Its image does not include pytest or the test files.
+
 ## Docker
 
 Compose runs two containers on the `parkify` bridge network. Neon PostgreSQL stays outside Docker and is reached with the connection strings in `.env`. Those values are passed when a container starts. They are not copied into either image.
@@ -163,6 +197,7 @@ docker compose exec backend python -c "import logging; logging.disable(logging.C
 - Backend health check stays unhealthy: `docker compose logs backend`. The HTTP check calls `GET /api/health` inside the container.
 - Frontend returns 502 for `/api/health`: the backend container is not healthy yet. Check `docker compose ps` and the backend logs.
 - Neon connectivity fails: confirm the pooled `DATABASE_URL` in `.env` uses `sslmode=require`, then start the backend again. Do not print the URL.
+- Docker tests must use `docker compose --profile test run --rm --no-deps -T --build backend-test`. Do not bind-mount the repository over `/app` and do not copy tests into `parkify-backend`.
 
 ## API Examples
 
