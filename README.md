@@ -1,38 +1,58 @@
 # Parkify
 
-Parkify is a real-time smart parking management platform for monitoring 3D garage occupancy, vehicle telemetry, parking sessions, and reservations.
+Parkify is a real-time smart parking platform for garage occupancy, sessions, and reservations.
 
 ## Features
 
-- React, TypeScript, Vite, and Three.js (`@react-three/fiber` / `@react-three/drei`) frontend workspace (`frontend/`).
-- Futuristic dark-violet glassmorphic interface with segmented top navigation, responsive mobile drawer, and facility alert popover.
-- Interactive isometric 3D parking garage digital twin with sculpted clearcoat 3D vehicles, surface-painted bay numbers, studio lighting, orbit/zoom camera controls, and deck/status filtering across available, occupied, reserved, and unavailable spaces.
-- Dedicated Parking Map view with real-time search by parking space number or vehicle license plate, cross-deck focus, status filters, and camera controls.
-- Active Sessions view with license plate and parking space search, direction and session status filters, and direct navigation from assigned space numbers to the Parking Map.
-- Reservations management view with search, status filtering, booking creation, editing, cancellation, overlap validation, and synchronized frontend state across Dashboard and Parking Map.
-- Analytics view with daily occupancy curve, KPI summary, and per-zone capacity breakdowns distinguishing available, occupied, reserved, and unavailable spaces.
-- Facility Settings view for configuring facility profile, pricing tiers, and notification preferences with validation, header synchronization, and `localStorage` persistence.
-- Contextual side inspector panel featuring a rotatable 3D vehicle turntable preview for occupied bays, interactive occupancy charts, zone capacity breakdowns, and gate logs derived from a unified simulated dataset.
-- Client-side routing via React Router for Dashboard, Parking Map, Active Sessions, Reservations, Analytics, and Settings views.
+- 3D parking map, active sessions, reservations, analytics, and facility settings.
+- Flask API for spots, sessions, reservations, pricing, gate activity, dashboard, analytics, and settings.
+- Neon PostgreSQL. Occupancy comes from sessions, reservations, and maintenance.
+- Docker Compose for the React frontend and the Flask API.
+
+## Architecture
+
+Controller → Service → Repository → Database.
 
 ## Quickstart
 
-Install frontend dependencies and start the development server:
+Copy `.env.example` to `.env` and set the Neon URLs. Do not commit `.env`.
+
+- `DATABASE_URL` — pooled URL for the API
+- `MIGRATION_DATABASE_URL` — direct URL for Alembic
+- `TEST_DATABASE_URL` — a separate Neon branch for tests
 
 ```bash
-cd frontend
-npm install
-npm run dev
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
+alembic upgrade head
+python -m repositories.seed
+docker compose up --build -d
 ```
 
-Run lint and production build checks:
-
-```bash
-cd frontend
-npm run lint
-npm run build
-```
+API: http://127.0.0.1:5001
+Frontend: http://127.0.0.1:5173
 
 ## API Examples
 
-Backend API endpoints are not yet implemented.
+```bash
+curl -s http://127.0.0.1:5001/api/health
+curl -s "http://127.0.0.1:5001/api/facilities/facility-skyline/spots?status=available"
+curl -s http://127.0.0.1:5001/api/facilities/facility-skyline/dashboard
+curl -s http://127.0.0.1:5001/api/facilities/facility-skyline/settings
+```
+
+## Testing
+
+```bash
+pytest -v
+docker compose --profile test run --rm --no-deps -T --build backend-test
+```
+
+Database tests use `TEST_DATABASE_URL` and roll back. They skip when that URL is missing or points at the primary database.
+
+## Future Improvements
+
+- Redis cache (planned). Cache-Aside in the service layer for dashboard, analytics, and settings, with TTL, invalidation, database fallback, Docker Compose, tests, and benchmarks. Postponed because PostgreSQL meets current performance needs.
+- Authentication.
+- Connect the React app to this API. The UI still uses local mock data.

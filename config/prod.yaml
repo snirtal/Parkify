@@ -1,0 +1,14 @@
+app:
+  name: Parkify
+  env: production
+  debug: false
+  host: 0.0.0.0
+  port: 5001
+  secret_key: change-me-in-production
+
+logging:
+  level: INFO
+  format: "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+
+cors:
+  origins: []

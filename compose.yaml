@@ -1,0 +1,91 @@
+# Parkify application containers. Neon PostgreSQL stays outside this file.
+
+name: parkify
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+      target: runtime
+    image: parkify-backend
+    container_name: parkify-backend
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      SECRET_KEY: ${SECRET_KEY}
+      PARKIFY_ENV: production
+      HOST: 0.0.0.0
+      PORT: "5001"
+      DEBUG: "false"
+      LOG_LEVEL: INFO
+      CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+    ports:
+      - "127.0.0.1:5001:5001"
+    networks:
+      - parkify
+    init: true
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5001/api/health', timeout=3)",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+    image: parkify-frontend
+    container_name: parkify-frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:5173:80"
+    networks:
+      - parkify
+    init: true
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  backend-test:
+    profiles: ["test"]
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+      target: test
+    image: parkify-backend-test
+    environment:
+      TEST_DATABASE_URL: ${TEST_DATABASE_URL}
+      DATABASE_URL: ${DATABASE_URL}
+      MIGRATION_DATABASE_URL: ${MIGRATION_DATABASE_URL}
+    networks:
+      - parkify
+    init: true
+
+networks:
+  parkify:
+    name: parkify
+    driver: bridge
