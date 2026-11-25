@@ -1,0 +1,43 @@
+.futuristic-shell {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.futuristic-shell__ambient {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 52% 40% at 32% 28%, rgba(139, 92, 246, 0.11), transparent 70%),
+    radial-gradient(ellipse 40% 35% at 78% 24%, rgba(34, 211, 238, 0.08), transparent 70%);
+}
+
+.futuristic-shell__main {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  padding: 20px 28px 32px;
+}
+
+.futuristic-shell__container {
+  width: 100%;
+  max-width: 1520px;
+  margin: 0 auto;
+}
+
+.futuristic-shell__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 48;
+  background: rgba(5, 4, 12, 0.65);
+  backdrop-filter: blur(4px);
+}
+
+@media (max-width: 680px) {
+  .futuristic-shell__main {
+    padding: 16px 16px 24px;
+  }
+}
