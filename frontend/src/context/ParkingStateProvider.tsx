@@ -12,6 +12,7 @@ import {
 } from '../api/parkifyApi'
 import type { FacilitySnapshot } from '../api/mapFacility'
 import type { FacilitySettings, ReservationDraft, SmartParkingDataset } from '../types/parking'
+import { FACILITY_REFRESH_MS } from './liveRefresh'
 import {
   ParkingContext,
   type ActionResult,
@@ -64,19 +65,42 @@ export function ParkingStateProvider({ children }: { children: ReactNode }) {
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
-    const controller = new AbortController()
-    loadFacility(controller.signal)
-      .then((next) => {
-        setSnapshot(next)
-        setStatus('ready')
-        setError(null)
-      })
-      .catch((loadError: unknown) => {
-        if (isAbortError(loadError)) return
-        setStatus('error')
-        setError(loadError instanceof Error ? loadError.message : 'The facility could not be loaded.')
-      })
-    return () => controller.abort()
+    let cancelled = false
+    let loaded = false
+    let inFlight = false
+    let active: AbortController | null = null
+
+    const pull = () => {
+      if (inFlight) return
+      inFlight = true
+      const controller = new AbortController()
+      active = controller
+      loadFacility(controller.signal)
+        .then((next) => {
+          if (cancelled) return
+          loaded = true
+          setSnapshot(next)
+          setStatus('ready')
+          setError(null)
+        })
+        .catch((loadError: unknown) => {
+          if (cancelled || isAbortError(loadError) || loaded) return
+          setStatus('error')
+          setError(loadError instanceof Error ? loadError.message : 'The facility could not be loaded.')
+        })
+        .finally(() => {
+          if (active === controller) active = null
+          inFlight = false
+        })
+    }
+
+    pull()
+    const timer = window.setInterval(pull, FACILITY_REFRESH_MS)
+    return () => {
+      cancelled = true
+      active?.abort()
+      window.clearInterval(timer)
+    }
   }, [reloadKey])
 
   const apply = async (work: () => Promise<unknown>): Promise<ActionResult> => {

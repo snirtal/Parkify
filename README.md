@@ -36,6 +36,20 @@ Frontend: http://127.0.0.1:5173
 
 `npm run dev` in `frontend/` proxies `/api` to the local API. Docker serves the same paths through Nginx. Do not put database credentials in the frontend.
 
+## Live simulation
+
+`make start` runs the isolated API, frontend, and simulator. When the application is already up, it resumes the simulator only. Events arrive every 5 seconds, and the browser reloads every 2 seconds. `make stop` stops new simulated events and leaves the application open. `make shutdown` stops the isolated API, frontend, and simulator.
+
+```bash
+make start
+make stop
+make shutdown
+```
+
+Browser: http://127.0.0.1:5174/
+
+The live stack uses the isolated Neon testing branch. Existing rows stay in place. Production on ports 5001 and 5173 is unchanged.
+
 ## API Examples
 
 ```bash
