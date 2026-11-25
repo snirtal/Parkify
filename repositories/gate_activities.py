@@ -9,7 +9,7 @@ from typing import Protocol
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
-from models.orm import GateActivity
+from models.orm import GateActivity, ParkingSpot
 from repositories.base import Page, SqlAlchemyCrudRepository, _guarded, _validate_page
 
 
@@ -82,7 +82,11 @@ class SqlAlchemyGateActivityRepository(SqlAlchemyCrudRepository[GateActivity]):
             .order_by(GateActivity.occurred_at.desc(), GateActivity.id.desc())
             .limit(limit)
             .offset(offset)
-            .options(joinedload(GateActivity.vehicle), joinedload(GateActivity.spot))
+            .options(
+                joinedload(GateActivity.vehicle),
+                joinedload(GateActivity.spot).joinedload(ParkingSpot.zone),
+                joinedload(GateActivity.spot).joinedload(ParkingSpot.floor),
+            )
         )
         items = list(self.session.scalars(statement).unique())
         return Page(items=items, total=int(total or 0), limit=limit, offset=offset)

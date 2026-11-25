@@ -12,7 +12,7 @@ from typing import Protocol
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
-from models.orm import ParkingSpot
+from models.orm import Floor, ParkingSpot
 from repositories.base import SqlAlchemyCrudRepository, _guarded
 
 
@@ -26,6 +26,10 @@ class ParkingSpotRepository(Protocol):
     def delete(self, entity: ParkingSpot) -> None: ...
 
     def get_by_code(self, code: str) -> ParkingSpot | None: ...
+
+    def get_for_update(self, entity_id: str) -> ParkingSpot | None: ...
+
+    def list_for_facility(self, facility_id: str) -> Sequence[ParkingSpot]: ...
 
     def list_for_floor(self, floor_id: str) -> Sequence[ParkingSpot]: ...
 
@@ -45,6 +49,18 @@ class SqlAlchemyParkingSpotRepository(SqlAlchemyCrudRepository[ParkingSpot]):
             .options(joinedload(ParkingSpot.zone), joinedload(ParkingSpot.floor))
         )
         return self.session.scalars(statement).unique().one_or_none()
+
+    @_guarded("list_for_facility")
+    def list_for_facility(self, facility_id: str) -> list[ParkingSpot]:
+        self.logger.debug("list_for_facility facility_id=%s", facility_id)
+        statement = (
+            select(ParkingSpot)
+            .join(Floor, ParkingSpot.floor_id == Floor.id)
+            .where(Floor.facility_id == facility_id)
+            .order_by(Floor.level_index, ParkingSpot.row, ParkingSpot.slot_index)
+            .options(joinedload(ParkingSpot.zone), joinedload(ParkingSpot.floor))
+        )
+        return list(self.session.scalars(statement).unique())
 
     @_guarded("list_for_floor")
     def list_for_floor(self, floor_id: str) -> list[ParkingSpot]:

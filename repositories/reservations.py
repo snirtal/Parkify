@@ -46,6 +46,14 @@ class ReservationRepository(Protocol):
         include_cancelled: bool = False,
     ) -> Sequence[Reservation]: ...
 
+    def list_covering(
+        self,
+        moment: datetime,
+        *,
+        spot_id: str | None = None,
+        vehicle_id: str | None = None,
+    ) -> Sequence[Reservation]: ...
+
 
 def _filtered_statement(
     *,
@@ -118,3 +126,28 @@ class SqlAlchemyReservationRepository(SqlAlchemyCrudRepository[Reservation]):
             range_end=ends_at,
             include_cancelled=include_cancelled,
         )
+
+    @_guarded("list_covering")
+    def list_covering(
+        self,
+        moment: datetime,
+        *,
+        spot_id: str | None = None,
+        vehicle_id: str | None = None,
+    ) -> list[Reservation]:
+        """Return non-cancelled reservations whose window contains `moment`."""
+        self.logger.debug("list_covering spot_id=%s", spot_id)
+        statement = select(Reservation).where(
+            Reservation.status != "Cancelled",
+            Reservation.starts_at <= moment,
+            Reservation.ends_at > moment,
+        )
+        if spot_id is not None:
+            statement = statement.where(Reservation.spot_id == spot_id)
+        if vehicle_id is not None:
+            statement = statement.where(Reservation.vehicle_id == vehicle_id)
+        statement = statement.order_by(Reservation.starts_at, Reservation.id).options(
+            joinedload(Reservation.vehicle),
+            joinedload(Reservation.spot),
+        )
+        return list(self.session.scalars(statement).unique())

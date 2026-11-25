@@ -12,10 +12,10 @@ from functools import wraps
 from typing import Generic, Protocol, TypeVar
 
 from sqlalchemy import select
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from repositories.exceptions import RepositoryError
+from repositories.exceptions import RepositoryConflict, RepositoryError
 
 T = TypeVar("T")
 
@@ -98,6 +98,18 @@ class SqlAlchemyCrudRepository(Generic[T]):
     def delete(self, entity: T) -> None:
         self.session.delete(entity)
         self.logger.debug("delete")
+
+    def get_for_update(self, entity_id: str) -> T | None:
+        """Lock the row for the rest of the caller's transaction."""
+        self.logger.debug("get_for_update id=%s", entity_id)
+        try:
+            return self.session.get(self.model, entity_id, with_for_update=True)
+        except OperationalError as exc:
+            self.logger.error("get_for_update failed (%s)", type(exc).__name__)
+            raise RepositoryConflict("get_for_update failed") from exc
+        except SQLAlchemyError as exc:
+            self.logger.error("get_for_update failed (%s)", type(exc).__name__)
+            raise RepositoryError("get_for_update failed") from exc
 
 
 def _validate_page(limit: int | None, offset: int) -> None:

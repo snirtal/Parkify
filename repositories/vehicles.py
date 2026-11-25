@@ -23,6 +23,8 @@ class VehicleRepository(Protocol):
 
     def get_by_plate(self, plate_number: str) -> Vehicle | None: ...
 
+    def get_for_update(self, entity_id: str) -> Vehicle | None: ...
+
 
 class SqlAlchemyVehicleRepository(SqlAlchemyCrudRepository[Vehicle]):
     def __init__(self, session: Session) -> None:

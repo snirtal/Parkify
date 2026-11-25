@@ -7,9 +7,10 @@ and stages those rows.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import datetime
 from typing import Protocol
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from models.orm import ParkingSession
@@ -34,6 +35,10 @@ class ParkingSessionRepository(Protocol):
     def list_for_spot(self, spot_id: str) -> Sequence[ParkingSession]: ...
 
     def list_for_vehicle(self, vehicle_id: str) -> Sequence[ParkingSession]: ...
+
+    def list_overlapping_interval(
+        self, start: datetime, end: datetime
+    ) -> Sequence[ParkingSession]: ...
 
 
 def _with_parties(statement):
@@ -84,6 +89,23 @@ class SqlAlchemyParkingSessionRepository(SqlAlchemyCrudRepository[ParkingSession
         statement = _with_parties(
             select(ParkingSession)
             .where(ParkingSession.vehicle_id == vehicle_id)
+            .order_by(ParkingSession.started_at, ParkingSession.id)
+        )
+        return list(self.session.scalars(statement).unique())
+
+    @_guarded("list_overlapping_interval")
+    def list_overlapping_interval(self, start: datetime, end: datetime) -> list[ParkingSession]:
+        """Return sessions that overlap the half-open interval [start, end)."""
+        self.logger.debug("list_overlapping_interval")
+        statement = _with_parties(
+            select(ParkingSession)
+            .where(
+                ParkingSession.started_at < end,
+                or_(
+                    ParkingSession.ended_at.is_(None),
+                    ParkingSession.ended_at > start,
+                ),
+            )
             .order_by(ParkingSession.started_at, ParkingSession.id)
         )
         return list(self.session.scalars(statement).unique())

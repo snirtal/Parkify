@@ -155,6 +155,75 @@ docker compose --profile test run --rm --no-deps -T --build backend-test
 
 Database tests inside that container still use only `TEST_DATABASE_URL`. They skip when it is missing or points at the same Neon endpoint and database as `DATABASE_URL` or `MIGRATION_DATABASE_URL`. The running backend receives `DATABASE_URL` and `SECRET_KEY` only. Its image does not include pytest or the test files.
 
+## Services
+
+The `services/` package is the business layer. It depends on the repository interfaces through `build_services(uow_factory)`. It does not import Flask, does not execute SQL, and does not store derived occupancy. A service opens one unit of work, changes every row that belongs to the operation, then commits. Any failure rolls that unit of work back. Database errors are logged by exception type and raised as `ConflictError` with code `concurrent_update`. Connection strings are not included.
+
+The default clock is the facility's simulated date and time, not the server clock. Timestamps are naive facility-local values. Tests can inject `FixedClock`. Allocation locks every involved spot in identifier order, then every involved vehicle in identifier order, and gives up after 3 seconds if another transaction still holds a lock. A reservation update locks the current vehicle even when the plate does not change, and locks both spots or both vehicles when either one changes. Overlap is checked again after those locks. The partial unique index and the reservation exclusion constraint remain the backstop.
+
+```python
+from config.database import create_db_engine
+from config.settings import get_settings
+from services.factory import build_services
+from services.results import FacilitySettingsUpdate
+from services.unit_of_work import unit_of_work_factory
+from sqlalchemy.orm import sessionmaker
+
+engine = create_db_engine(get_settings().database_url)
+services = build_services(unit_of_work_factory(sessionmaker(bind=engine, expire_on_commit=False)))
+
+spots = services.parking.search_spots("facility-skyline", status="available", query="P-210")
+started = services.gate.record_entry("facility-skyline", "SVC-100A", "P-210")
+finished = services.sessions.complete_session("facility-skyline", plate_number="SVC-100A")
+quote = finished.quote
+services.settings.update_settings(
+    "facility-skyline",
+    FacilitySettingsUpdate(grace_period_minutes=20),
+)
+```
+
+Those calls commit. The automated tests build the same services around the rolled-back `TEST_DATABASE_URL` transaction instead of the application database.
+
+| Service | Methods |
+| --- | --- |
+| `parking` | `summarize`, `search_spots` |
+| `sessions` | `start_session`, `complete_session`, `list_active_sessions` |
+| `reservations` | `create_reservation`, `get_reservation`, `list_reservations`, `update_reservation`, `cancel_reservation`, `refresh_lifecycle` |
+| `pricing` | `displayed_hourly_rate`, `quote` |
+| `gate` | `record_entry`, `record_exit`, `list_activity` |
+| `dashboard` | `snapshot` |
+| `analytics` | `occupancy_over_time`, `occupancy_by_zone`, `occupancy_by_floor` |
+| `settings` | `get_settings`, `update_settings` |
+
+### Business rules
+
+- Spot status is occupied when an open session exists, unavailable when `maintenance_reason` is set and there is no open session, reserved when a non-cancelled reservation window contains the facility clock, and available otherwise. The percentage is occupied spots divided by every spot, rounded to one decimal place.
+- A vehicle cannot have two open sessions. A spot cannot have two open sessions. Entry to a spot reserved for another plate is rejected. Entry for the plate that holds the current reservation is allowed and records gate status `Reserved`.
+- A reservation window must end after it starts. Cancelled rows do not count as overlap. The same spot or the same vehicle cannot have two overlapping non-cancelled windows. A window that contains the facility clock cannot be placed on an occupied spot. On the paid-until date, a window that starts before `paid_until` is also rejected. A later day is not treated as a permanent hold.
+- Active and Scheduled reservations can be updated or cancelled. A window that has ended becomes Completed and can no longer be changed. `refresh_lifecycle` persists that transition. Reads also return `effective_status` without writing. Leaving before the window ends does not complete the reservation early, so the spot stays reserved until `ends_at`. An expired reservation that was never used and one whose vehicle did enter both become Completed. The status value does not distinguish them. A fulfilled visit has an entry gate event whose `reservation_id` points at the reservation. An expired reservation with no such entry was not fulfilled. The exit event does not store `reservation_id`.
+- Completing a session writes the exit gate event in the same transaction and returns the charge. The schema has no charge column, so the amount is not stored. If the overstay alert is enabled and `paid_until` is earlier than the exit, the session records alert title `Reservation overstay`.
+- Gate activity can be filtered and paged. Rejected entry and exit attempts are logged and raised. They are not inserted, because `gate_activities.status` only allows `Active`, `Completed`, and `Reserved`.
+- The dashboard counts spaces, the four statuses, occupancy percentage, active sessions, sessions whose paid-until time has passed, floor and zone capacity, and the newest gate events. The high-occupancy threshold is 85 percent, matching the settings screen. The alert toggle arms the watch; `above_high_occupancy_threshold` reports whether the current percentage has reached it.
+- Analytics counts distinct spots with a stored session covering each bucket start. Completed sessions use a half-open interval. Open sessions stop at the facility clock and are not projected forward. A range whose buckets are all unoccupied returns no points and `has_history=False`. It does not return the frontend's illustrated curve.
+
+### Pricing assumptions
+
+The settings screen shows rates but never calculates a charge. Until a narrower policy is specified, `PricingService.quote` uses these rules:
+
+- Standard stalls use the facility hourly rate. EV Fast 150kW stalls use that rate plus the EV surcharge. VIP Priority and Accessible stalls keep the rate stored on the stall.
+- A stay of at most the grace period is free. Grace is not subtracted from a longer stay.
+- Longer stays are billed in started hours. Each facility-local calendar day is rounded up on its own, capped by the facility daily maximum, then added.
+- `paid_until` is the time shown on an occupied stall. It does not reduce the charge.
+- Operating hours remain a display string. The service checks its length and does not open or close the facility from it. The seeded value is 24/7.
+
+Settings validation matches the screen: hourly rate from 0.01 through 500.00, daily maximum from 0.01 through 2000.00 and at least the hourly rate, grace from 0 through 180 minutes, and EV surcharge from 0.00 through 100.00. Amounts are `Decimal` values with two decimal places.
+
+### Errors
+
+Services raise `ValidationError`, `NotFoundError`, or `ConflictError`. Each has a stable `code` such as `spot_occupied`, `spot_unavailable`, `spot_reserved`, `vehicle_already_parked`, `reservation_overlap`, `reservation_closed`, `session_not_active`, or `concurrent_update`. These are domain errors. HTTP mapping belongs to a later controller.
+
+Service tests that do not need PostgreSQL are in `tests/test_services_unit.py`. Integration tests use the same isolated Neon branch and rollback as the repository tests. `tests/test_services_concurrency.py` commits two temporary rows on that branch, checks that only one entry wins, and deletes those rows. It does not touch the seeded facility.
+
 ## Docker
 
 Compose runs two containers on the `parkify` bridge network. Neon PostgreSQL stays outside Docker and is reached with the connection strings in `.env`. Those values are passed when a container starts. They are not copied into either image.
