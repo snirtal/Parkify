@@ -4,7 +4,7 @@ import {
   OccupancyHudBar,
   SpotInspectorPanel,
 } from '../components/dashboard'
-import { SMART_PARKING_DATA } from '../data/mockParkingData'
+import { useParkingState } from '../context/useParkingState'
 import './DashboardPage.css'
 
 const IsometricGarage3D = lazy(() =>
@@ -14,14 +14,14 @@ const IsometricGarage3D = lazy(() =>
 )
 
 export function DashboardPage() {
+  const { dataset } = useParkingState()
   const [selectedBayId, setSelectedBayId] = useState<string>('bay-p204')
 
   const selectedBay =
-    SMART_PARKING_DATA.bays.find((bay) => bay.id === selectedBayId) ??
-    SMART_PARKING_DATA.bays[0]
+    dataset.bays.find((bay) => bay.id === selectedBayId) ?? dataset.bays[0]
 
   const handleSelectByCode = (bayCode: string) => {
-    const target = SMART_PARKING_DATA.bays.find((b) => b.code === bayCode)
+    const target = dataset.bays.find((b) => b.code === bayCode)
     if (target) {
       setSelectedBayId(target.id)
     }
@@ -31,13 +31,13 @@ export function DashboardPage() {
     <div className="cyber-dashboard">
       <div className="cyber-dashboard__stage-col">
         <OccupancyHudBar
-          totalSpots={SMART_PARKING_DATA.totalSpots}
-          availableSpots={SMART_PARKING_DATA.availableSpots}
-          occupiedSpots={SMART_PARKING_DATA.occupiedSpots}
-          reservedSpots={SMART_PARKING_DATA.reservedSpots}
-          unavailableSpots={SMART_PARKING_DATA.unavailableSpots}
-          occupancyRate={SMART_PARKING_DATA.occupancyRate}
-          rateTrend={SMART_PARKING_DATA.rateTrend}
+          totalSpots={dataset.totalSpots}
+          availableSpots={dataset.availableSpots}
+          occupiedSpots={dataset.occupiedSpots}
+          reservedSpots={dataset.reservedSpots}
+          unavailableSpots={dataset.unavailableSpots}
+          occupancyRate={dataset.occupancyRate}
+          rateTrend={dataset.rateTrend}
         />
 
         <Suspense
@@ -48,9 +48,9 @@ export function DashboardPage() {
           }
         >
           <IsometricGarage3D
-            bays={SMART_PARKING_DATA.bays}
+            bays={dataset.bays}
             selectedBayId={selectedBay.id}
-            snapshotTimestamp={SMART_PARKING_DATA.snapshotTimestamp}
+            snapshotTimestamp={dataset.snapshotTimestamp}
             onSelectBay={setSelectedBayId}
           />
         </Suspense>
@@ -61,10 +61,10 @@ export function DashboardPage() {
       <div className="cyber-dashboard__inspector-col">
         <SpotInspectorPanel
           bay={selectedBay}
-          zones={SMART_PARKING_DATA.zones}
-          gateLogs={SMART_PARKING_DATA.gateLogs}
-          yearlySeries={SMART_PARKING_DATA.yearlyRentalSeries}
-          todaySeries={SMART_PARKING_DATA.todayOccupancySeries}
+          zones={dataset.zones}
+          gateLogs={dataset.gateLogs}
+          yearlySeries={dataset.yearlyRentalSeries}
+          todaySeries={dataset.todayOccupancySeries}
           onSelectBayByCode={handleSelectByCode}
         />
       </div>

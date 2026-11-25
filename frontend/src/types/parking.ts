@@ -29,6 +29,7 @@ export interface ParkingBay {
   ratePerHour: string
   sensorNote: string
   reservedBy?: string
+  reservedPlate?: string
   reservedUntil?: string
   maintenanceReason?: string
   vehicle?: BayVehicleInfo
@@ -64,11 +65,36 @@ export interface GateLogItem {
   duration?: string
 }
 
+export type ReservationStatus = 'Active' | 'Scheduled' | 'Completed' | 'Cancelled'
+
+export interface ReservationItem {
+  id: string
+  plateNumber: string
+  bayCode: string
+  date: string
+  startTime: string
+  endTime: string
+  status: ReservationStatus
+  driverName?: string
+  linkedGateLogId?: string
+  isSeeded?: boolean
+}
+
+export interface ReservationDraft {
+  plateNumber: string
+  bayCode: string
+  date: string
+  startTime: string
+  endTime: string
+}
+
 export interface SmartParkingDataset {
   isSimulated: boolean
   facilityAddress: string
   facilityName: string
   snapshotTimestamp: string
+  simulatedDate: string
+  simulatedTime: string
   totalSpots: number
   availableSpots: number
   occupiedSpots: number
@@ -81,4 +107,5 @@ export interface SmartParkingDataset {
   yearlyRentalSeries: ChartSlotPoint[]
   zones: ZoneBreakdownItem[]
   gateLogs: GateLogItem[]
+  reservations: ReservationItem[]
 }

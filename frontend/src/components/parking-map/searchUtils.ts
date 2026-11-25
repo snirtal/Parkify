@@ -22,5 +22,6 @@ export function matchesCodeOrPlate(
 }
 
 export function matchBayQuery(bay: ParkingBay, rawQuery: string): boolean {
-  return matchesCodeOrPlate(bay.code, bay.vehicle?.plateNumber, rawQuery)
+  const plate = bay.vehicle?.plateNumber ?? bay.reservedPlate
+  return matchesCodeOrPlate(bay.code, plate, rawQuery)
 }

@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { SpotInspectorPanel } from '../components/dashboard'
 import { ParkingSearchBar } from '../components/parking-map/ParkingSearchBar'
 import { matchBayQuery } from '../components/parking-map/searchUtils'
-import { SMART_PARKING_DATA } from '../data/mockParkingData'
+import { useParkingState } from '../context/useParkingState'
 import './DashboardPage.css'
 
 const IsometricGarage3D = lazy(() =>
@@ -15,6 +15,7 @@ const IsometricGarage3D = lazy(() =>
 const DEFAULT_BAY_ID = 'bay-p204'
 
 export function ParkingMapPage() {
+  const { dataset } = useParkingState()
   const [searchParams, setSearchParams] = useSearchParams()
   const [searchQuery, setSearchQuery] = useState<string>('')
 
@@ -23,34 +24,34 @@ export function ParkingMapPage() {
   const selectedBay = useMemo(() => {
     if (bayParam) {
       const normalized = bayParam.trim().toLowerCase()
-      const matched = SMART_PARKING_DATA.bays.find(
+      const matched = dataset.bays.find(
         (bay) => bay.code.toLowerCase() === normalized || bay.id.toLowerCase() === normalized,
       )
       if (matched) return matched
     }
     return (
-      SMART_PARKING_DATA.bays.find((bay) => bay.id === DEFAULT_BAY_ID) ??
-      SMART_PARKING_DATA.bays[0]
+      dataset.bays.find((bay) => bay.id === DEFAULT_BAY_ID) ??
+      dataset.bays[0]
     )
-  }, [bayParam])
+  }, [bayParam, dataset.bays])
 
   const matchedBayIds = useMemo(() => {
     if (!searchQuery.trim()) return null
-    const matching = SMART_PARKING_DATA.bays
+    const matching = dataset.bays
       .filter((bay) => matchBayQuery(bay, searchQuery))
       .map((bay) => bay.id)
     return new Set(matching)
-  }, [searchQuery])
+  }, [dataset.bays, searchQuery])
 
   const handleSelectBay = (bayId: string) => {
-    const target = SMART_PARKING_DATA.bays.find((b) => b.id === bayId)
+    const target = dataset.bays.find((b) => b.id === bayId)
     if (target) {
       setSearchParams({ bay: target.code }, { replace: true })
     }
   }
 
   const handleSelectByCode = (bayCode: string) => {
-    const target = SMART_PARKING_DATA.bays.find((b) => b.code === bayCode)
+    const target = dataset.bays.find((b) => b.code === bayCode)
     if (target) {
       setSearchParams({ bay: target.code }, { replace: true })
     }
@@ -60,7 +61,7 @@ export function ParkingMapPage() {
     <div className="cyber-dashboard">
       <div className="cyber-dashboard__stage-col">
         <ParkingSearchBar
-          bays={SMART_PARKING_DATA.bays}
+          bays={dataset.bays}
           selectedBayId={selectedBay.id}
           query={searchQuery}
           onQueryChange={setSearchQuery}
@@ -78,9 +79,9 @@ export function ParkingMapPage() {
           }
         >
           <IsometricGarage3D
-            bays={SMART_PARKING_DATA.bays}
+            bays={dataset.bays}
             selectedBayId={selectedBay.id}
-            snapshotTimestamp={SMART_PARKING_DATA.snapshotTimestamp}
+            snapshotTimestamp={dataset.snapshotTimestamp}
             onSelectBay={handleSelectBay}
             expanded
             matchedBayIds={matchedBayIds}
@@ -91,10 +92,10 @@ export function ParkingMapPage() {
       <div className="cyber-dashboard__inspector-col">
         <SpotInspectorPanel
           bay={selectedBay}
-          zones={SMART_PARKING_DATA.zones}
-          gateLogs={SMART_PARKING_DATA.gateLogs}
-          yearlySeries={SMART_PARKING_DATA.yearlyRentalSeries}
-          todaySeries={SMART_PARKING_DATA.todayOccupancySeries}
+          zones={dataset.zones}
+          gateLogs={dataset.gateLogs}
+          yearlySeries={dataset.yearlyRentalSeries}
+          todaySeries={dataset.todayOccupancySeries}
           onSelectBayByCode={handleSelectByCode}
         />
       </div>

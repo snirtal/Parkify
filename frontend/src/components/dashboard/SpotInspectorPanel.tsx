@@ -44,7 +44,7 @@ export function SpotInspectorPanel({
     : bay.status === 'available'
       ? 'OPEN'
       : bay.status === 'reserved'
-        ? 'HOLD'
+        ? (bay.reservedPlate ?? 'HOLD')
         : 'LOCK'
 
   const specBody = vehicle ? vehicle.bodyType : bay.bayClass.split(' ')[0]

@@ -1,7 +1,12 @@
+import { ParkingStateProvider } from './context/ParkingStateProvider'
 import { AppRouter } from './router/AppRouter'
 
 function App() {
-  return <AppRouter />
+  return (
+    <ParkingStateProvider>
+      <AppRouter />
+    </ParkingStateProvider>
+  )
 }
 
 export default App

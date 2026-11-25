@@ -1,6 +1,14 @@
+import { useMemo } from 'react'
 import { GateActivityTable } from '../components/dashboard'
-import { MOCK_DASHBOARD_DATA } from '../data/mockDashboardData'
+import { useParkingState } from '../context/useParkingState'
+import { deriveGateActivityEvents } from '../utils/reservationUtils'
 
 export function SessionsPage() {
-  return <GateActivityTable events={MOCK_DASHBOARD_DATA.recentGateActivity} />
+  const { dataset } = useParkingState()
+  const events = useMemo(
+    () => deriveGateActivityEvents(dataset.gateLogs),
+    [dataset.gateLogs],
+  )
+
+  return <GateActivityTable events={events} />
 }

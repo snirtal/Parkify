@@ -2,9 +2,13 @@ import type {
   ChartSlotPoint,
   GateLogItem,
   ParkingBay,
+  ReservationItem,
   SmartParkingDataset,
   ZoneBreakdownItem,
 } from '../types/parking'
+
+export const SIMULATED_DATE = '2026-11-25'
+export const SIMULATED_TIME = '14:24'
 
 const BAYS: ParkingBay[] = [
   // =========================================================================
@@ -55,6 +59,7 @@ const BAYS: ParkingBay[] = [
     ratePerHour: '$6.00/h',
     sensorNote: 'License plate recognition armed at Skyline North Gate for incoming reservation.',
     reservedBy: 'Elena Rostova',
+    reservedPlate: 'VIP-700S',
     reservedUntil: '16.45',
   },
   {
@@ -322,6 +327,7 @@ const BAYS: ParkingBay[] = [
     ratePerHour: '$6.00/h',
     sensorNote: 'Executive reservation hold active.',
     reservedBy: 'Julian Mercer',
+    reservedPlate: 'EXEC-104',
     reservedUntil: '16.00',
   },
   {
@@ -610,11 +616,78 @@ const GATE_LOGS: GateLogItem[] = [
   },
 ]
 
+const INITIAL_RESERVATIONS: ReservationItem[] = [
+  {
+    id: 'res-1',
+    plateNumber: 'VIP-700S',
+    bayCode: 'P-203',
+    date: SIMULATED_DATE,
+    startTime: '14:00',
+    endTime: '16:45',
+    status: 'Active',
+    driverName: 'Elena Rostova',
+    linkedGateLogId: 'gl-5',
+  },
+  {
+    id: 'res-2',
+    plateNumber: 'EXEC-104',
+    bayCode: 'P-104',
+    date: SIMULATED_DATE,
+    startTime: '13:30',
+    endTime: '16:00',
+    status: 'Active',
+    driverName: 'Julian Mercer',
+    isSeeded: true,
+  },
+  {
+    id: 'res-3',
+    plateNumber: 'EVG-202M',
+    bayCode: 'P-202',
+    date: '2026-11-26',
+    startTime: '09:00',
+    endTime: '12:00',
+    status: 'Scheduled',
+    driverName: 'Nadia Lin',
+  },
+  {
+    id: 'res-4',
+    plateNumber: 'FLT-108C',
+    bayCode: 'P-108',
+    date: '2026-11-26',
+    startTime: '13:00',
+    endTime: '16:30',
+    status: 'Scheduled',
+    driverName: 'David Ross',
+  },
+  {
+    id: 'res-5',
+    plateNumber: 'KRN-101A',
+    bayCode: 'P-101',
+    date: SIMULATED_DATE,
+    startTime: '09:00',
+    endTime: '11:30',
+    status: 'Completed',
+    driverName: 'Tessa Brooks',
+  },
+  {
+    id: 'res-6',
+    plateNumber: 'ZNT-109X',
+    bayCode: 'P-109',
+    date: SIMULATED_DATE,
+    startTime: '11:00',
+    endTime: '13:00',
+    status: 'Cancelled',
+    driverName: 'Omar Haddad',
+  },
+]
+
 export const SMART_PARKING_DATA: SmartParkingDataset = {
   isSimulated: true,
   facilityAddress: '13 Skyline, Chicago, 60611',
   facilityName: 'Skyline Autonomous Hub',
-  snapshotTimestamp: 'Today, 02/22/25 14:24:05 PM',
+  snapshotTimestamp: 'Today, 11/25/26 14:24:05 PM',
+  simulatedDate: SIMULATED_DATE,
+  simulatedTime: SIMULATED_TIME,
   totalSpots: TOTAL_SPOTS,
   availableSpots: AVAILABLE_SPOTS,
   occupiedSpots: OCCUPIED_SPOTS,
@@ -627,4 +700,5 @@ export const SMART_PARKING_DATA: SmartParkingDataset = {
   yearlyRentalSeries: YEARLY_SERIES,
   zones: ZONES,
   gateLogs: GATE_LOGS,
+  reservations: INITIAL_RESERVATIONS,
 }

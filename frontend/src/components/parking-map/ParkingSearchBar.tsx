@@ -95,8 +95,10 @@ export function ParkingSearchBar({
                 >
                   <span className="map-search__chip-dot" aria-hidden="true" />
                   <span className="map-search__chip-code">{bay.code}</span>
-                  {bay.vehicle && (
-                    <span className="map-search__chip-plate">{bay.vehicle.plateNumber}</span>
+                  {(bay.vehicle?.plateNumber ?? bay.reservedPlate) && (
+                    <span className="map-search__chip-plate">
+                      {bay.vehicle?.plateNumber ?? bay.reservedPlate}
+                    </span>
                   )}
                   <span className="map-search__chip-deck">Deck {bay.deck}</span>
                 </button>
