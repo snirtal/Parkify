@@ -1,0 +1,17 @@
+.git
+.venv
+.env
+.env.*
+!.env.example
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.coverage
+logs
+*.log
+frontend/node_modules
+frontend/dist
+node_modules
+dist
+tests
+.DS_Store

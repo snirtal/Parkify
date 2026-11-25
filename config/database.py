@@ -57,7 +57,8 @@ def create_db_engine(database_url: str) -> Engine:
 
     @event.listens_for(engine, "handle_error")
     def _log_db_error(context) -> None:  # noqa: ANN001
-        logger.error("Database error: %s", context.original_exception)
+        error = context.original_exception
+        logger.error("Database error (%s)", type(error).__name__)
 
     return engine
 
@@ -68,7 +69,7 @@ def check_database_connection(engine: Engine) -> None:
         with engine.connect() as connection:
             connection.execute(text("SELECT 1"))
     except SQLAlchemyError as exc:
-        logger.exception("Database connection failed")
+        logger.error("Database connection failed (%s)", type(exc).__name__)
         raise DatabaseConnectionError(
             "Unable to connect to the configured PostgreSQL database."
         ) from exc

@@ -121,9 +121,48 @@ Timestamps are stored as facility-local values without a time zone so they match
 
 The seed snapshot is 1 facility, 2 floors, 4 zones, 24 spots, 22 vehicles, 16 sessions (14 active, 2 completed), 6 reservations, and 6 gate events.
 
-## Future containers
+## Docker
 
-Docker remains part of the architecture, but Phase 2 does not run containers. Later phases can use Docker Compose for the Flask API, the React frontend, Redis, and Kafka if it is required. Neon PostgreSQL stays outside Docker.
+Compose runs two containers on the `parkify` bridge network. Neon PostgreSQL stays outside Docker and is reached with the connection strings in `.env`. Those values are passed when a container starts. They are not copied into either image.
+
+| Container | Image | Published address | Inside the network |
+| --- | --- | --- | --- |
+| `parkify-backend` | `parkify-backend` | `http://127.0.0.1:5001` | `backend:5001` |
+| `parkify-frontend` | `parkify-frontend` | `http://127.0.0.1:5173` | `frontend:80` |
+
+The frontend container serves the built React app and forwards `/api/` to the backend. The backend listens on `0.0.0.0:5001`, writes logs to stdout, and returns the existing JSON errors. Both services publish a Docker health check.
+
+Build and start:
+
+```bash
+docker compose up --build -d
+```
+
+Follow logs:
+
+```bash
+docker compose logs -f
+```
+
+Stop and remove the containers. This does not change the Neon database.
+
+```bash
+docker compose down
+```
+
+Read-only check that the backend container can reach Neon. The command runs `SELECT 1` and does not print the connection string:
+
+```bash
+docker compose exec backend python -c "import logging; logging.disable(logging.CRITICAL); from config.database import create_db_engine, check_database_connection; from config.settings import get_settings; check_database_connection(create_db_engine(get_settings().database_url)); print('neon-connectivity ok')"
+```
+
+### Troubleshooting
+
+- `DATABASE_URL is not set`: create `.env` from `.env.example` and start the stack again. The image does not contain this file.
+- Port 5001 or 5173 is already in use: stop the local `python app.py` or `npm run dev` process, then run `docker compose up -d`.
+- Backend health check stays unhealthy: `docker compose logs backend`. The HTTP check calls `GET /api/health` inside the container.
+- Frontend returns 502 for `/api/health`: the backend container is not healthy yet. Check `docker compose ps` and the backend logs.
+- Neon connectivity fails: confirm the pooled `DATABASE_URL` in `.env` uses `sslmode=require`, then start the backend again. Do not print the URL.
 
 ## API Examples
 
