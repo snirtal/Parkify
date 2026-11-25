@@ -1,14 +1,13 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { NAV_ITEMS } from '../../config/navigation'
-import { SMART_PARKING_DATA } from '../../data/mockParkingData'
+import { useParkingState } from '../../context/useParkingState'
 import { BellIcon, BrandLogoIcon, GearIcon, MenuIcon, PinIcon } from '../icons/AppIcons'
 import './Header.css'
 
 export interface HeaderProps {
   title: string
   subtitle?: string
-  facilityName?: string
   isMobileMenuOpen: boolean
   onOpenMobileMenu: () => void
 }
@@ -16,11 +15,34 @@ export interface HeaderProps {
 const PRIMARY_TABS = NAV_ITEMS.filter((item) => item.path !== '/settings')
 
 export function Header({
-  facilityName = SMART_PARKING_DATA.facilityAddress,
   isMobileMenuOpen,
   onOpenMobileMenu,
 }: HeaderProps) {
+  const { settings, dataset } = useParkingState()
   const [showAlerts, setShowAlerts] = useState(false)
+
+  const alerts: { id: string; label: string; body: string }[] = []
+  if (settings.spaceFaultAlert && dataset.unavailableSpots > 0) {
+    alerts.push({
+      id: 'fault',
+      label: 'P-208 & P-106 • Space Fault',
+      body: `${dataset.unavailableSpots} bays offline for sensor and induction pad calibration.`,
+    })
+  }
+  if (settings.reservationOverstayAlert) {
+    alerts.push({
+      id: 'overstay',
+      label: 'P-204 • VEL-204X',
+      body: 'Paid window elapsed at 14:08; reservation overstay monitor armed.',
+    })
+  }
+  if (settings.highOccupancyAlert) {
+    alerts.push({
+      id: 'occupancy',
+      label: `Capacity Watch • ${dataset.occupancyRate}%`,
+      body: `High-occupancy threshold armed at 85% (${dataset.occupiedSpots}/${dataset.totalSpots} occupied).`,
+    })
+  }
 
   return (
     <header className="top-nav">
@@ -60,9 +82,15 @@ export function Header({
       </nav>
 
       <div className="top-nav__right">
-        <div className="top-nav__location" title="Simulated Facility Location">
+        <div
+          className="top-nav__location"
+          title={`${settings.facilityName} • ${settings.facilityAddress} • ${settings.operatingHours}`}
+        >
           <PinIcon className="top-nav__location-icon" />
-          <span className="top-nav__location-text">{facilityName}</span>
+          <div className="top-nav__location-copy">
+            <span className="top-nav__location-name">{settings.facilityName}</span>
+            <span className="top-nav__location-text">{settings.facilityAddress}</span>
+          </div>
         </div>
 
         <div className="top-nav__alert-wrap">
@@ -74,7 +102,7 @@ export function Header({
             aria-expanded={showAlerts}
           >
             <BellIcon />
-            <span className="top-nav__alert-dot" aria-hidden="true" />
+            {alerts.length > 0 && <span className="top-nav__alert-dot" aria-hidden="true" />}
           </button>
 
           {showAlerts && (
@@ -83,13 +111,17 @@ export function Header({
                 <span>AI Sensor Feed</span>
                 <span className="top-nav__popover-tag">Simulated</span>
               </div>
-              <p className="top-nav__popover-item">
-                <strong>P-204 • VEL-204X:</strong> Minor vibration detected near windshield; AI
-                optical check verified zero surface damage.
-              </p>
-              <p className="top-nav__popover-item">
-                <strong>P-208 • Maintenance:</strong> Induction pad calibration in progress.
-              </p>
+              {alerts.length > 0 ? (
+                alerts.map((alert) => (
+                  <p key={alert.id} className="top-nav__popover-item">
+                    <strong>{alert.label}:</strong> {alert.body}
+                  </p>
+                ))
+              ) : (
+                <p className="top-nav__popover-item">
+                  All simulated alert notifications are currently disabled in Settings.
+                </p>
+              )}
             </div>
           )}
         </div>

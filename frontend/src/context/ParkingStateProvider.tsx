@@ -1,13 +1,25 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { SMART_PARKING_DATA } from '../data/mockParkingData'
-import type { ReservationDraft, ReservationItem } from '../types/parking'
+import type {
+  FacilitySettings,
+  ReservationDraft,
+  ReservationItem,
+} from '../types/parking'
 import {
   computeReservationStatus,
   deriveParkingDataset,
   validateReservationDraft,
 } from '../utils/reservationUtils'
 import {
+  clearStoredSettings,
+  DEFAULT_FACILITY_SETTINGS,
+  loadStoredSettings,
+  saveStoredSettings,
+  validateFacilitySettings,
+} from '../utils/settingsUtils'
+import {
   ParkingContext,
+  type ActionResult,
   type ParkingContextValue,
   type ReservationActionResult,
 } from './useParkingState'
@@ -20,6 +32,7 @@ export function ParkingStateProvider({ children }: ParkingStateProviderProps) {
   const [reservations, setReservations] = useState<ReservationItem[]>(
     SMART_PARKING_DATA.reservations,
   )
+  const [settings, setSettings] = useState<FacilitySettings>(() => loadStoredSettings())
 
   const addReservation = (draft: ReservationDraft): ReservationActionResult => {
     const cleanDraft: ReservationDraft = {
@@ -103,17 +116,48 @@ export function ParkingStateProvider({ children }: ParkingStateProviderProps) {
     )
   }
 
+  const updateSettings = (next: FacilitySettings): ActionResult => {
+    const normalized: FacilitySettings = {
+      ...next,
+      facilityName: next.facilityName.trim(),
+      facilityAddress: next.facilityAddress.trim(),
+      operatingHours: next.operatingHours.trim(),
+      hourlyRate: Number(next.hourlyRate.toFixed(2)),
+      dailyMaxRate: Number(next.dailyMaxRate.toFixed(2)),
+      gracePeriodMinutes: Math.round(next.gracePeriodMinutes),
+      evSurcharge: Number(next.evSurcharge.toFixed(2)),
+    }
+
+    const validationError = validateFacilitySettings(normalized)
+    if (validationError) {
+      return { ok: false, error: validationError }
+    }
+
+    setSettings(normalized)
+    saveStoredSettings(normalized)
+    return { ok: true }
+  }
+
+  const resetSettings = (): FacilitySettings => {
+    clearStoredSettings()
+    setSettings(DEFAULT_FACILITY_SETTINGS)
+    return DEFAULT_FACILITY_SETTINGS
+  }
+
   const dataset = useMemo(
-    () => deriveParkingDataset(SMART_PARKING_DATA, reservations),
-    [reservations],
+    () => deriveParkingDataset(SMART_PARKING_DATA, reservations, settings),
+    [reservations, settings],
   )
 
   const value: ParkingContextValue = {
     dataset,
     reservations,
+    settings,
     addReservation,
     updateReservation,
     cancelReservation,
+    updateSettings,
+    resetSettings,
   }
 
   return <ParkingContext.Provider value={value}>{children}</ParkingContext.Provider>

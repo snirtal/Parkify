@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { NAV_ITEMS, type NavItem } from '../../config/navigation'
+import { useParkingState } from '../../context/useParkingState'
 import { BrandLogoIcon, CloseIcon, NavIcon } from '../icons/AppIcons'
 import './Sidebar.css'
 
@@ -16,6 +17,8 @@ export function Sidebar({
   isMobileOpen,
   onCloseMobile,
 }: SidebarProps) {
+  const { settings } = useParkingState()
+
   return (
     <aside
       className={`mobile-drawer${isMobileOpen ? ' mobile-drawer--open' : ''}`}
@@ -27,7 +30,7 @@ export function Sidebar({
           <BrandLogoIcon />
           <div>
             <span className="mobile-drawer__title">Parkify</span>
-            <span className="mobile-drawer__subtitle">Autonomous Parking OS</span>
+            <span className="mobile-drawer__subtitle">{settings.facilityName}</span>
           </div>
         </div>
 

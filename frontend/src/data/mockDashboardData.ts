@@ -14,6 +14,8 @@ const DERIVED_ZONES: ZoneCapacity[] = SMART_PARKING_DATA.zones.map((z) => ({
   code: z.code,
   category: CATEGORY_MAP[z.code] ?? 'Standard',
   occupied: z.occupied,
+  reserved: z.reserved,
+  unavailable: z.unavailable,
   capacity: z.capacity,
 }))
 

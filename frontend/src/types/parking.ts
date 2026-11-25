@@ -88,6 +88,19 @@ export interface ReservationDraft {
   endTime: string
 }
 
+export interface FacilitySettings {
+  facilityName: string
+  facilityAddress: string
+  operatingHours: string
+  hourlyRate: number
+  dailyMaxRate: number
+  gracePeriodMinutes: number
+  evSurcharge: number
+  highOccupancyAlert: boolean
+  reservationOverstayAlert: boolean
+  spaceFaultAlert: boolean
+}
+
 export interface SmartParkingDataset {
   isSimulated: boolean
   facilityAddress: string

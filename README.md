@@ -10,6 +10,8 @@ Parkify is a real-time smart parking management platform for monitoring 3D garag
 - Dedicated Parking Map view with real-time search by parking space number or vehicle license plate, cross-deck focus, status filters, and camera controls.
 - Active Sessions view with license plate and parking space search, direction and session status filters, and direct navigation from assigned space numbers to the Parking Map.
 - Reservations management view with search, status filtering, booking creation, editing, cancellation, overlap validation, and synchronized frontend state across Dashboard and Parking Map.
+- Analytics view with daily occupancy curve, KPI summary, and per-zone capacity breakdowns distinguishing available, occupied, reserved, and unavailable spaces.
+- Facility Settings view for configuring facility profile, pricing tiers, and notification preferences with validation, header synchronization, and `localStorage` persistence.
 - Contextual side inspector panel featuring a rotatable 3D vehicle turntable preview for occupied bays, interactive occupancy charts, zone capacity breakdowns, and gate logs derived from a unified simulated dataset.
 - Client-side routing via React Router for Dashboard, Parking Map, Active Sessions, Reservations, Analytics, and Settings views.
 

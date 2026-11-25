@@ -5,13 +5,20 @@ import './DailyOccupancyChart.css'
 export interface DailyOccupancyChartProps {
   data: HourlyOccupancyPoint[]
   totalCapacity: number
+  reservedSpots?: number
+  unavailableSpots?: number
 }
 
 const CHART_WIDTH = 640
 const CHART_HEIGHT = 230
 const PADDING = { top: 18, right: 18, bottom: 34, left: 42 }
 
-export function DailyOccupancyChart({ data, totalCapacity }: DailyOccupancyChartProps) {
+export function DailyOccupancyChart({
+  data,
+  totalCapacity,
+  reservedSpots = 0,
+  unavailableSpots = 0,
+}: DailyOccupancyChartProps) {
   const [activeIndex, setActiveIndex] = useState<number>(
     data.length > 0 ? data.length - 1 : 0,
   )
@@ -24,6 +31,9 @@ export function DailyOccupancyChart({ data, totalCapacity }: DailyOccupancyChart
   const plotHeight = CHART_HEIGHT - PADDING.top - PADDING.bottom
 
   const points = data.map((point, index) => {
+    const isCurrentSnapshot = index === data.length - 1
+    const pointReserved = isCurrentSnapshot ? reservedSpots : 0
+    const pointUnavailable = unavailableSpots
     const xRatio = data.length === 1 ? 0.5 : index / (data.length - 1)
     const yRatio = Math.min(Math.max(point.occupied / totalCapacity, 0), 1)
     const x = PADDING.left + xRatio * plotWidth
@@ -35,7 +45,12 @@ export function DailyOccupancyChart({ data, totalCapacity }: DailyOccupancyChart
       x,
       y,
       rate,
-      available: Math.max(totalCapacity - point.occupied, 0),
+      reserved: pointReserved,
+      unavailable: pointUnavailable,
+      available: Math.max(
+        totalCapacity - point.occupied - pointReserved - pointUnavailable,
+        0,
+      ),
     }
   })
 
@@ -97,9 +112,26 @@ export function DailyOccupancyChart({ data, totalCapacity }: DailyOccupancyChart
         <span className="occupancy-chart__readout-metric">
           <strong>{selected.available}</strong> available
         </span>
-        <span className="occupancy-chart__readout-sep" aria-hidden="true">
-          •
-        </span>
+        {selected.reserved > 0 && (
+          <>
+            <span className="occupancy-chart__readout-sep" aria-hidden="true">
+              •
+            </span>
+            <span className="occupancy-chart__readout-metric">
+              <strong>{selected.reserved}</strong> reserved
+            </span>
+          </>
+        )}
+        {selected.unavailable > 0 && (
+          <>
+            <span className="occupancy-chart__readout-sep" aria-hidden="true">
+              •
+            </span>
+            <span className="occupancy-chart__readout-metric">
+              <strong>{selected.unavailable}</strong> unavailable
+            </span>
+          </>
+        )}
         <span className="occupancy-chart__readout-rate">{selected.rate}% utilization</span>
       </div>
 

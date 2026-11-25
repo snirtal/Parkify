@@ -14,6 +14,8 @@ export interface ZoneCapacity {
   code: string
   category: ZoneCategory
   occupied: number
+  reserved: number
+  unavailable: number
   capacity: number
 }
 

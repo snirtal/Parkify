@@ -1,6 +1,7 @@
 import { normalizeSearchToken } from '../components/parking-map/searchUtils'
 import type { GateActivityEvent, ZoneCapacity, ZoneCategory } from '../types/dashboard'
 import type {
+  FacilitySettings,
   GateLogItem,
   ParkingBay,
   ReservationDraft,
@@ -126,8 +127,19 @@ function buildDerivedZone(
 export function deriveParkingDataset(
   base: SmartParkingDataset,
   reservations: ReservationItem[],
+  settings?: FacilitySettings,
 ): SmartParkingDataset {
-  const derivedBays: ParkingBay[] = base.bays.map((bay) => {
+  const derivedBays: ParkingBay[] = base.bays.map((rawBay) => {
+    const dynamicRate = settings
+      ? rawBay.bayClass === 'EV Fast 150kW'
+        ? `$${(settings.hourlyRate + settings.evSurcharge).toFixed(2)}/h`
+        : rawBay.bayClass === 'Standard'
+          ? `$${settings.hourlyRate.toFixed(2)}/h`
+          : rawBay.ratePerHour
+      : rawBay.ratePerHour
+
+    const bay: ParkingBay = { ...rawBay, ratePerHour: dynamicRate }
+
     if (bay.status === 'occupied' || bay.status === 'unavailable') {
       return bay
     }
@@ -214,6 +226,8 @@ export function deriveParkingDataset(
 
   return {
     ...base,
+    facilityName: settings ? settings.facilityName : base.facilityName,
+    facilityAddress: settings ? settings.facilityAddress : base.facilityAddress,
     totalSpots,
     occupiedSpots,
     availableSpots,
@@ -242,6 +256,8 @@ export function deriveZoneCapacities(zones: ZoneBreakdownItem[]): ZoneCapacity[]
     code: z.code,
     category: ZONE_CATEGORY_MAP[z.code] ?? 'Standard',
     occupied: z.occupied,
+    reserved: z.reserved,
+    unavailable: z.unavailable,
     capacity: z.capacity,
   }))
 }
