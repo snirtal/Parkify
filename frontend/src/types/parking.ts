@@ -61,6 +61,7 @@ export interface GateLogItem {
   direction: 'entry' | 'exit'
   gateName: string
   bayCode: string
+  zoneCode?: string
   status: 'Active' | 'Completed' | 'Reserved'
   duration?: string
 }
@@ -118,6 +119,8 @@ export interface SmartParkingDataset {
   bays: ParkingBay[]
   todayOccupancySeries: ChartSlotPoint[]
   yearlyRentalSeries: ChartSlotPoint[]
+  overstaySessions: number
+  aboveHighOccupancy: boolean
   zones: ZoneBreakdownItem[]
   gateLogs: GateLogItem[]
   reservations: ReservationItem[]

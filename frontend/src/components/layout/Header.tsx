@@ -18,29 +18,35 @@ export function Header({
   isMobileMenuOpen,
   onOpenMobileMenu,
 }: HeaderProps) {
-  const { settings, dataset } = useParkingState()
+  const { settings, dataset, sessions } = useParkingState()
   const [showAlerts, setShowAlerts] = useState(false)
 
   const alerts: { id: string; label: string; body: string }[] = []
-  if (settings.spaceFaultAlert && dataset.unavailableSpots > 0) {
+  const offlineBays = dataset.bays.filter((bay) => bay.status === 'unavailable')
+  if (settings.spaceFaultAlert && offlineBays.length > 0) {
     alerts.push({
       id: 'fault',
-      label: 'P-208 & P-106 • Space Fault',
-      body: `${dataset.unavailableSpots} bays offline for sensor and induction pad calibration.`,
+      label: `${offlineBays.map((bay) => bay.code).join(', ')} • Space Fault`,
+      body: `${offlineBays.length} bays are offline.`,
     })
   }
-  if (settings.reservationOverstayAlert) {
+  const clock = dataset.snapshotTimestamp.replace(' ', 'T')
+  const overstays = sessions.filter(
+    (session) => session.paidUntil !== null && session.paidUntil < clock,
+  )
+  if (settings.reservationOverstayAlert && dataset.overstaySessions > 0) {
+    const plates = overstays.map((session) => `${session.bayCode} • ${session.plateNumber}`)
     alerts.push({
       id: 'overstay',
-      label: 'P-204 • VEL-204X',
-      body: 'Paid window elapsed at 14:08; reservation overstay monitor armed.',
+      label: plates[0] ?? 'Reservation overstay',
+      body: `${dataset.overstaySessions} active session${dataset.overstaySessions === 1 ? '' : 's'} passed the paid-until time.`,
     })
   }
-  if (settings.highOccupancyAlert) {
+  if (settings.highOccupancyAlert && dataset.aboveHighOccupancy) {
     alerts.push({
       id: 'occupancy',
       label: `Capacity Watch • ${dataset.occupancyRate}%`,
-      body: `High-occupancy threshold armed at 85% (${dataset.occupiedSpots}/${dataset.totalSpots} occupied).`,
+      body: `Occupancy is at or above 85% (${dataset.occupiedSpots}/${dataset.totalSpots} occupied).`,
     })
   }
 
@@ -61,7 +67,7 @@ export function Header({
           <BrandLogoIcon className="top-nav__brand-logo" />
           <div className="top-nav__brand-copy">
             <span className="top-nav__brand-name">Parkify</span>
-            <span className="top-nav__sim-pill">Simulated</span>
+            <span className="top-nav__sim-pill">{dataset.isSimulated ? 'Simulated' : 'Live'}</span>
           </div>
         </NavLink>
       </div>
@@ -106,10 +112,10 @@ export function Header({
           </button>
 
           {showAlerts && (
-            <div className="top-nav__popover" role="dialog" aria-label="Simulated notifications">
+            <div className="top-nav__popover" role="dialog" aria-label="Facility notifications">
               <div className="top-nav__popover-head">
-                <span>AI Sensor Feed</span>
-                <span className="top-nav__popover-tag">Simulated</span>
+                <span>Facility alerts</span>
+                <span className="top-nav__popover-tag">{dataset.isSimulated ? 'Simulated' : 'Live'}</span>
               </div>
               {alerts.length > 0 ? (
                 alerts.map((alert) => (
@@ -118,9 +124,7 @@ export function Header({
                   </p>
                 ))
               ) : (
-                <p className="top-nav__popover-item">
-                  All simulated alert notifications are currently disabled in Settings.
-                </p>
+                <p className="top-nav__popover-item">No facility alerts right now.</p>
               )}
             </div>
           )}

@@ -42,6 +42,7 @@ export function ReservationsPage() {
     addReservation,
     updateReservation,
     cancelReservation,
+    submitting,
   } = useParkingState()
 
   const [searchQuery, setSearchQuery] = useState<string>('')
@@ -113,13 +114,14 @@ export function ReservationsPage() {
     if (formError) setFormError(null)
   }
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (submitting) return
 
     const result =
       formMode === 'edit' && editingId
-        ? updateReservation(editingId, draft)
-        : addReservation(draft)
+        ? await updateReservation(editingId, draft)
+        : await addReservation(draft)
 
     if (!result.ok) {
       setFormError(result.error)
@@ -129,8 +131,13 @@ export function ReservationsPage() {
     handleCloseForm()
   }
 
-  const handleCancelReservation = (id: string) => {
-    cancelReservation(id)
+  const handleCancelReservation = async (id: string) => {
+    if (submitting) return
+    const result = await cancelReservation(id)
+    if (!result.ok) {
+      setFormError(result.error)
+      return
+    }
     if (editingId === id) {
       handleCloseForm()
     }
@@ -144,7 +151,7 @@ export function ReservationsPage() {
             <h2 id="reservations-title" className="dashboard-panel__title">
               Parking Reservations
             </h2>
-            <span className="dashboard-panel__sim-tag">Simulated</span>
+            <span className="dashboard-panel__sim-tag">Live</span>
           </div>
           <p className="dashboard-panel__subtitle">
             Manage advance parking bookings, scheduled time windows, and bay holds across Deck P2
@@ -287,7 +294,7 @@ export function ReservationsPage() {
             >
               Discard
             </button>
-            <button type="submit" className="reservations__btn-primary">
+            <button type="submit" className="reservations__btn-primary" disabled={submitting}>
               {formMode === 'edit' ? 'Save Changes' : 'Create Reservation'}
             </button>
           </div>

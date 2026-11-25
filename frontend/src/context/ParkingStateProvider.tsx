@@ -1,163 +1,118 @@
-import { useMemo, useState, type ReactNode } from 'react'
-import { SMART_PARKING_DATA } from '../data/mockParkingData'
-import type {
-  FacilitySettings,
-  ReservationDraft,
-  ReservationItem,
-} from '../types/parking'
+import { useEffect, useState, type ReactNode } from 'react'
+import { isAbortError } from '../api/client'
 import {
-  computeReservationStatus,
-  deriveParkingDataset,
-  validateReservationDraft,
-} from '../utils/reservationUtils'
-import {
-  clearStoredSettings,
-  DEFAULT_FACILITY_SETTINGS,
-  loadStoredSettings,
-  saveStoredSettings,
-  validateFacilitySettings,
-} from '../utils/settingsUtils'
+  cancelReservation as cancelReservationRequest,
+  commitChange,
+  createReservation,
+  loadFacility,
+  recordEntry as recordEntryRequest,
+  recordExit as recordExitRequest,
+  saveSettings,
+  updateReservation as updateReservationRequest,
+} from '../api/parkifyApi'
+import type { FacilitySnapshot } from '../api/mapFacility'
+import type { FacilitySettings, ReservationDraft, SmartParkingDataset } from '../types/parking'
 import {
   ParkingContext,
   type ActionResult,
+  type LoadStatus,
   type ParkingContextValue,
-  type ReservationActionResult,
 } from './useParkingState'
 
-export interface ParkingStateProviderProps {
-  children: ReactNode
+const EMPTY_SETTINGS: FacilitySettings = {
+  facilityName: '',
+  facilityAddress: '',
+  operatingHours: '',
+  hourlyRate: 0,
+  dailyMaxRate: 0,
+  gracePeriodMinutes: 0,
+  evSurcharge: 0,
+  highOccupancyAlert: false,
+  reservationOverstayAlert: false,
+  spaceFaultAlert: false,
 }
 
-export function ParkingStateProvider({ children }: ParkingStateProviderProps) {
-  const [reservations, setReservations] = useState<ReservationItem[]>(
-    SMART_PARKING_DATA.reservations,
-  )
-  const [settings, setSettings] = useState<FacilitySettings>(() => loadStoredSettings())
+const EMPTY_DATASET: SmartParkingDataset = {
+  isSimulated: false,
+  facilityAddress: '',
+  facilityName: '',
+  snapshotTimestamp: '',
+  simulatedDate: '',
+  simulatedTime: '',
+  totalSpots: 0,
+  availableSpots: 0,
+  occupiedSpots: 0,
+  reservedSpots: 0,
+  unavailableSpots: 0,
+  occupancyRate: 0,
+  rateTrend: '',
+  bays: [],
+  todayOccupancySeries: [],
+  yearlyRentalSeries: [],
+  overstaySessions: 0,
+  aboveHighOccupancy: false,
+  zones: [],
+  gateLogs: [],
+  reservations: [],
+}
 
-  const addReservation = (draft: ReservationDraft): ReservationActionResult => {
-    const cleanDraft: ReservationDraft = {
-      ...draft,
-      plateNumber: draft.plateNumber.trim().toUpperCase(),
-    }
+export function ParkingStateProvider({ children }: { children: ReactNode }) {
+  const [snapshot, setSnapshot] = useState<FacilitySnapshot | null>(null)
+  const [status, setStatus] = useState<LoadStatus>('loading')
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
-    const validationError = validateReservationDraft(
-      cleanDraft,
-      reservations,
-      SMART_PARKING_DATA.bays,
-      SMART_PARKING_DATA.simulatedDate,
-    )
-    if (validationError) {
-      return { ok: false, error: validationError }
-    }
+  useEffect(() => {
+    const controller = new AbortController()
+    loadFacility(controller.signal)
+      .then((next) => {
+        setSnapshot(next)
+        setStatus('ready')
+        setError(null)
+      })
+      .catch((loadError: unknown) => {
+        if (isAbortError(loadError)) return
+        setStatus('error')
+        setError(loadError instanceof Error ? loadError.message : 'The facility could not be loaded.')
+      })
+    return () => controller.abort()
+  }, [reloadKey])
 
-    const nextItem: ReservationItem = {
-      id: `res-${Date.now()}`,
-      plateNumber: cleanDraft.plateNumber,
-      bayCode: cleanDraft.bayCode,
-      date: cleanDraft.date,
-      startTime: cleanDraft.startTime,
-      endTime: cleanDraft.endTime,
-      status: computeReservationStatus(
-        cleanDraft,
-        SMART_PARKING_DATA.simulatedDate,
-        SMART_PARKING_DATA.simulatedTime,
-      ),
-    }
-
-    setReservations((prev) => [nextItem, ...prev])
+  const apply = async (work: () => Promise<unknown>): Promise<ActionResult> => {
+    setSubmitting(true)
+    const result = await commitChange(work)
+    setSubmitting(false)
+    if (!result.ok) return result
+    setSnapshot(result.snapshot)
+    setStatus('ready')
+    setError(null)
     return { ok: true }
   }
 
-  const updateReservation = (
-    id: string,
-    draft: ReservationDraft,
-  ): ReservationActionResult => {
-    const cleanDraft: ReservationDraft = {
-      ...draft,
-      plateNumber: draft.plateNumber.trim().toUpperCase(),
-    }
-
-    const validationError = validateReservationDraft(
-      cleanDraft,
-      reservations,
-      SMART_PARKING_DATA.bays,
-      SMART_PARKING_DATA.simulatedDate,
-      id,
-    )
-    if (validationError) {
-      return { ok: false, error: validationError }
-    }
-
-    setReservations((prev) =>
-      prev.map((item) => {
-        if (item.id !== id) return item
-        return {
-          ...item,
-          plateNumber: cleanDraft.plateNumber,
-          bayCode: cleanDraft.bayCode,
-          date: cleanDraft.date,
-          startTime: cleanDraft.startTime,
-          endTime: cleanDraft.endTime,
-          status: computeReservationStatus(
-            cleanDraft,
-            SMART_PARKING_DATA.simulatedDate,
-            SMART_PARKING_DATA.simulatedTime,
-          ),
-        }
-      }),
-    )
-
-    return { ok: true }
-  }
-
-  const cancelReservation = (id: string) => {
-    setReservations((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, status: 'Cancelled' } : item)),
-    )
-  }
-
-  const updateSettings = (next: FacilitySettings): ActionResult => {
-    const normalized: FacilitySettings = {
-      ...next,
-      facilityName: next.facilityName.trim(),
-      facilityAddress: next.facilityAddress.trim(),
-      operatingHours: next.operatingHours.trim(),
-      hourlyRate: Number(next.hourlyRate.toFixed(2)),
-      dailyMaxRate: Number(next.dailyMaxRate.toFixed(2)),
-      gracePeriodMinutes: Math.round(next.gracePeriodMinutes),
-      evSurcharge: Number(next.evSurcharge.toFixed(2)),
-    }
-
-    const validationError = validateFacilitySettings(normalized)
-    if (validationError) {
-      return { ok: false, error: validationError }
-    }
-
-    setSettings(normalized)
-    saveStoredSettings(normalized)
-    return { ok: true }
-  }
-
-  const resetSettings = (): FacilitySettings => {
-    clearStoredSettings()
-    setSettings(DEFAULT_FACILITY_SETTINGS)
-    return DEFAULT_FACILITY_SETTINGS
-  }
-
-  const dataset = useMemo(
-    () => deriveParkingDataset(SMART_PARKING_DATA, reservations, settings),
-    [reservations, settings],
-  )
+  const dataset = snapshot?.dataset ?? EMPTY_DATASET
+  const settings = snapshot?.settings ?? EMPTY_SETTINGS
 
   const value: ParkingContextValue = {
+    status,
+    error,
+    submitting,
     dataset,
-    reservations,
+    reservations: snapshot?.reservations ?? [],
     settings,
-    addReservation,
-    updateReservation,
-    cancelReservation,
-    updateSettings,
-    resetSettings,
+    sessions: snapshot?.sessions ?? [],
+    reload: () => {
+      setStatus('loading')
+      setError(null)
+      setReloadKey((key) => key + 1)
+    },
+    addReservation: (draft: ReservationDraft) => apply(() => createReservation(draft)),
+    updateReservation: (id, draft) => apply(() => updateReservationRequest(id, draft)),
+    cancelReservation: (id) => apply(() => cancelReservationRequest(id)),
+    updateSettings: (next) => apply(() => saveSettings(next)),
+    resetSettings: () => settings,
+    recordEntry: (plateNumber, spotCode) => apply(() => recordEntryRequest(plateNumber, spotCode)),
+    recordExit: (plateNumber) => apply(() => recordExitRequest(plateNumber)),
   }
 
   return <ParkingContext.Provider value={value}>{children}</ParkingContext.Provider>

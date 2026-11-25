@@ -5,7 +5,6 @@ import {
   ZoneCapacityCard,
 } from '../components/dashboard'
 import { useParkingState } from '../context/useParkingState'
-import { MOCK_DASHBOARD_DATA } from '../data/mockDashboardData'
 import { deriveZoneCapacities } from '../utils/reservationUtils'
 import './AnalyticsPage.css'
 
@@ -15,12 +14,12 @@ export function AnalyticsPage() {
 
   const hourlyData = useMemo(
     () =>
-      MOCK_DASHBOARD_DATA.hourlyOccupancy.map((pt, idx, arr) =>
-        idx === arr.length - 1
-          ? { ...pt, occupied: dataset.occupiedSpots, capacity: dataset.totalSpots }
-          : { ...pt, capacity: dataset.totalSpots },
-      ),
-    [dataset.occupiedSpots, dataset.totalSpots],
+      dataset.todayOccupancySeries.map((point) => ({
+        hour: point.label,
+        occupied: point.vehicles,
+        capacity: dataset.totalSpots,
+      })),
+    [dataset.todayOccupancySeries, dataset.totalSpots],
   )
 
   return (
@@ -36,12 +35,16 @@ export function AnalyticsPage() {
       />
 
       <div className="analytics-grid">
-        <DailyOccupancyChart
-          data={hourlyData}
-          totalCapacity={dataset.totalSpots}
-          reservedSpots={dataset.reservedSpots}
-          unavailableSpots={dataset.unavailableSpots}
-        />
+        {hourlyData.length === 0 ? (
+          <section className="dashboard-panel occupancy-chart">
+            <p className="facility-status">No stored occupancy for this day.</p>
+          </section>
+        ) : (
+          <DailyOccupancyChart
+            data={hourlyData}
+            totalCapacity={dataset.totalSpots}
+          />
+        )}
         <ZoneCapacityCard zones={zones} />
       </div>
     </div>

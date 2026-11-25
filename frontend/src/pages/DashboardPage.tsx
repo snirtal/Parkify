@@ -20,6 +20,10 @@ export function DashboardPage() {
   const selectedBay =
     dataset.bays.find((bay) => bay.id === selectedBayId) ?? dataset.bays[0]
 
+  if (!selectedBay) {
+    return <p className="facility-status">No parking spots were returned.</p>
+  }
+
   const handleSelectByCode = (bayCode: string) => {
     const target = dataset.bays.find((b) => b.code === bayCode)
     if (target) {

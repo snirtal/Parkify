@@ -239,6 +239,8 @@ export function deriveParkingDataset(
     zones: derivedZones,
     gateLogs: derivedGateLogs,
     reservations,
+    overstaySessions: base.overstaySessions,
+    aboveHighOccupancy: base.aboveHighOccupancy,
   }
 }
 
@@ -249,12 +251,21 @@ const ZONE_CATEGORY_MAP: Record<string, ZoneCategory> = {
   'P1-S': 'Standard',
 }
 
+const KNOWN_ZONE_CATEGORIES = new Set<ZoneCategory>([
+  'Standard',
+  'Commuter',
+  'EV Charging',
+  'Priority',
+])
+
 export function deriveZoneCapacities(zones: ZoneBreakdownItem[]): ZoneCapacity[] {
   return zones.map((z) => ({
     id: z.id,
     name: z.name,
     code: z.code,
-    category: ZONE_CATEGORY_MAP[z.code] ?? 'Standard',
+    category: KNOWN_ZONE_CATEGORIES.has(z.category as ZoneCategory)
+      ? (z.category as ZoneCategory)
+      : (ZONE_CATEGORY_MAP[z.code] ?? 'Standard'),
     occupied: z.occupied,
     reserved: z.reserved,
     unavailable: z.unavailable,
@@ -269,7 +280,7 @@ export function deriveGateActivityEvents(gateLogs: GateLogItem[]): GateActivityE
     plateNumber: log.plateNumber,
     eventType: log.direction,
     gateName: log.gateName,
-    zoneCode: log.bayCode.startsWith('P-2') ? 'P2' : 'P1',
+    zoneCode: log.zoneCode ?? (log.bayCode.startsWith('P-2') ? 'P2' : 'P1'),
     bayNumber: log.bayCode,
     status: log.status,
     duration: log.duration,

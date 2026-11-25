@@ -698,6 +698,8 @@ export const SMART_PARKING_DATA: SmartParkingDataset = {
   bays: BAYS,
   todayOccupancySeries: TODAY_SERIES,
   yearlyRentalSeries: YEARLY_SERIES,
+  overstaySessions: 1,
+  aboveHighOccupancy: false,
   zones: ZONES,
   gateLogs: GATE_LOGS,
   reservations: INITIAL_RESERVATIONS,

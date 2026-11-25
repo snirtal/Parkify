@@ -57,6 +57,10 @@ export function ParkingMapPage() {
     }
   }
 
+  if (!selectedBay) {
+    return <p className="facility-status">No parking spots were returned.</p>
+  }
+
   return (
     <div className="cyber-dashboard">
       <div className="cyber-dashboard__stage-col">

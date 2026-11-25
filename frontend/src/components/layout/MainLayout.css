@@ -28,6 +28,23 @@
   margin: 0 auto;
 }
 
+.facility-status {
+  padding: 28px;
+  border-radius: 18px;
+  border: 1px solid rgba(167, 139, 250, 0.28);
+  background: rgba(12, 10, 26, 0.72);
+  color: #e9d5ff;
+}
+
+.facility-status button {
+  margin-top: 12px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(192, 132, 252, 0.45);
+  background: #6d28d9;
+  color: #fff;
+}
+
 .futuristic-shell__backdrop {
   position: fixed;
   inset: 0;

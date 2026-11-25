@@ -14,7 +14,7 @@ export function ZoneCapacityCard({ zones }: ZoneCapacityCardProps) {
             <h2 id="zone-capacity-title" className="dashboard-panel__title">
               Zone Capacity Breakdown
             </h2>
-            <span className="dashboard-panel__sim-tag">Simulated</span>
+            <span className="dashboard-panel__sim-tag">Live</span>
           </div>
           <p className="dashboard-panel__subtitle">
             Available, occupied, reserved, and unavailable space distribution by zone

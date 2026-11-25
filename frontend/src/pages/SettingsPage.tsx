@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import '../components/dashboard/DailyOccupancyChart.css'
 import { useParkingState } from '../context/useParkingState'
 import type { FacilitySettings } from '../types/parking'
+import { validateFacilitySettings } from '../utils/settingsUtils'
 import './SettingsPage.css'
 
 interface SettingsFormState {
@@ -33,7 +34,7 @@ function toFormState(settings: FacilitySettings): SettingsFormState {
 }
 
 export function SettingsPage() {
-  const { dataset, settings, updateSettings, resetSettings } = useParkingState()
+  const { dataset, settings, updateSettings, resetSettings, submitting } = useParkingState()
 
   const [form, setForm] = useState<SettingsFormState>(() => toFormState(settings))
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -55,8 +56,9 @@ export function SettingsPage() {
     if (statusMessage) setStatusMessage(null)
   }
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (submitting) return
 
     const parsedHourly =
       form.hourlyRate.trim() === '' ? Number.NaN : Number(form.hourlyRate)
@@ -82,7 +84,19 @@ export function SettingsPage() {
       spaceFaultAlert: form.spaceFaultAlert,
     }
 
-    const result = updateSettings(candidate)
+    const validationError = validateFacilitySettings({
+      ...candidate,
+      facilityName: candidate.facilityName.trim(),
+      facilityAddress: candidate.facilityAddress.trim(),
+      operatingHours: candidate.operatingHours.trim(),
+    })
+    if (validationError) {
+      setStatusMessage(null)
+      setErrorMessage(validationError)
+      return
+    }
+
+    const result = await updateSettings(candidate)
     if (!result.ok) {
       setStatusMessage(null)
       setErrorMessage(result.error)
@@ -102,14 +116,14 @@ export function SettingsPage() {
         evSurcharge: Number(parsedEvSurcharge.toFixed(2)),
       }),
     )
-    setStatusMessage('Settings saved to browser storage.')
+    setStatusMessage('Settings saved.')
   }
 
   const handleReset = () => {
-    const defaults = resetSettings()
-    setForm(toFormState(defaults))
+    const saved = resetSettings()
+    setForm(toFormState(saved))
     setErrorMessage(null)
-    setStatusMessage('Settings restored to default values.')
+    setStatusMessage('Unsaved changes were discarded.')
   }
 
   return (
@@ -123,7 +137,7 @@ export function SettingsPage() {
                 <h2 id="settings-profile-title" className="dashboard-panel__title">
                   Facility Profile
                 </h2>
-                <span className="dashboard-panel__sim-tag">Simulated</span>
+                <span className="dashboard-panel__sim-tag">Live</span>
               </div>
               <p className="dashboard-panel__subtitle">
                 Identity, location, operating window, and live structural capacity
@@ -215,7 +229,7 @@ export function SettingsPage() {
                 <h2 id="settings-pricing-title" className="dashboard-panel__title">
                   Pricing
                 </h2>
-                <span className="dashboard-panel__sim-tag">Simulated</span>
+                <span className="dashboard-panel__sim-tag">Live</span>
               </div>
               <p className="dashboard-panel__subtitle">
                 Base parking rates, daily caps, grace period, and EV fast-charge add-on
@@ -303,7 +317,7 @@ export function SettingsPage() {
               <h2 id="settings-notifications-title" className="dashboard-panel__title">
                 Notification Preferences
               </h2>
-              <span className="dashboard-panel__sim-tag">Simulated</span>
+              <span className="dashboard-panel__sim-tag">Live</span>
             </div>
             <p className="dashboard-panel__subtitle">
               Configure which simulated telemetry alerts surface in the operator header feed
@@ -390,7 +404,7 @@ export function SettingsPage() {
           </span>
         ) : (
           <span className="settings-feedback">
-            Changes persist locally in browser storage and update the header immediately.
+            Changes are saved to the facility database after the server confirms them.
           </span>
         )}
 
@@ -402,7 +416,7 @@ export function SettingsPage() {
           >
             Reset
           </button>
-          <button type="submit" className="settings-btn-save">
+          <button type="submit" className="settings-btn-save" disabled={submitting}>
             Save Changes
           </button>
         </div>

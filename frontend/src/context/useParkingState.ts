@@ -5,19 +5,28 @@ import type {
   ReservationItem,
   SmartParkingDataset,
 } from '../types/parking'
+import type { ActiveSessionRow } from '../types/sessions'
 
+export type LoadStatus = 'loading' | 'ready' | 'error'
 export type ActionResult = { ok: true } | { ok: false; error: string }
 export type ReservationActionResult = ActionResult
 
 export interface ParkingContextValue {
+  status: LoadStatus
+  error: string | null
+  submitting: boolean
   dataset: SmartParkingDataset
   reservations: ReservationItem[]
   settings: FacilitySettings
-  addReservation: (draft: ReservationDraft) => ReservationActionResult
-  updateReservation: (id: string, draft: ReservationDraft) => ReservationActionResult
-  cancelReservation: (id: string) => void
-  updateSettings: (next: FacilitySettings) => ActionResult
+  sessions: ActiveSessionRow[]
+  reload: () => void
+  addReservation: (draft: ReservationDraft) => Promise<ReservationActionResult>
+  updateReservation: (id: string, draft: ReservationDraft) => Promise<ReservationActionResult>
+  cancelReservation: (id: string) => Promise<ActionResult>
+  updateSettings: (next: FacilitySettings) => Promise<ActionResult>
   resetSettings: () => FacilitySettings
+  recordEntry: (plateNumber: string, spotCode: string) => Promise<ActionResult>
+  recordExit: (plateNumber: string) => Promise<ActionResult>
 }
 
 export const ParkingContext = createContext<ParkingContextValue | null>(null)

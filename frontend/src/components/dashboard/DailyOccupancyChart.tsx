@@ -13,15 +13,20 @@ const CHART_WIDTH = 640
 const CHART_HEIGHT = 230
 const PADDING = { top: 18, right: 18, bottom: 34, left: 42 }
 
+function latestOccupiedIndex(data: HourlyOccupancyPoint[]): number {
+  for (let index = data.length - 1; index >= 0; index -= 1) {
+    if (data[index].occupied > 0) return index
+  }
+  return Math.max(data.length - 1, 0)
+}
+
 export function DailyOccupancyChart({
   data,
   totalCapacity,
   reservedSpots = 0,
   unavailableSpots = 0,
 }: DailyOccupancyChartProps) {
-  const [activeIndex, setActiveIndex] = useState<number>(
-    data.length > 0 ? data.length - 1 : 0,
-  )
+  const [activeIndex, setActiveIndex] = useState<number>(latestOccupiedIndex(data))
 
   if (data.length === 0 || totalCapacity <= 0) {
     return null
@@ -31,8 +36,7 @@ export function DailyOccupancyChart({
   const plotHeight = CHART_HEIGHT - PADDING.top - PADDING.bottom
 
   const points = data.map((point, index) => {
-    const isCurrentSnapshot = index === data.length - 1
-    const pointReserved = isCurrentSnapshot ? reservedSpots : 0
+    const pointReserved = reservedSpots
     const pointUnavailable = unavailableSpots
     const xRatio = data.length === 1 ? 0.5 : index / (data.length - 1)
     const yRatio = Math.min(Math.max(point.occupied / totalCapacity, 0), 1)
@@ -80,7 +84,7 @@ export function DailyOccupancyChart({
             <h2 id="occupancy-chart-title" className="dashboard-panel__title">
               Daily Occupancy Curve
             </h2>
-            <span className="dashboard-panel__sim-tag">Simulated</span>
+            <span className="dashboard-panel__sim-tag">Live</span>
           </div>
           <p className="dashboard-panel__subtitle">
             Hourly vehicle occupancy across {totalCapacity} total bays today
@@ -140,7 +144,7 @@ export function DailyOccupancyChart({
           viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
           className="occupancy-chart__svg"
           role="img"
-          aria-label="Line chart of simulated hourly parking occupancy"
+          aria-label="Line chart of hourly parking occupancy"
         >
           <defs>
             <linearGradient id="occupancyAreaGradient" x1="0" y1="0" x2="0" y2="1">

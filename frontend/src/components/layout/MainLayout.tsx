@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { getRouteMeta } from '../../config/navigation'
+import { useParkingState } from '../../context/useParkingState'
 import { Header } from './Header'
 import { Sidebar } from './Sidebar'
 import './MainLayout.css'
@@ -11,6 +12,7 @@ export function MainLayout() {
 
   const isMobileMenuOpen = mobileOpenPath === location.pathname
   const { title, subtitle } = getRouteMeta(location.pathname)
+  const { status, error, reload } = useParkingState()
 
   useEffect(() => {
     if (!isMobileMenuOpen) return
@@ -51,7 +53,20 @@ export function MainLayout() {
 
       <main className="futuristic-shell__main">
         <div className="futuristic-shell__container">
-          <Outlet />
+          {status === 'loading' ? (
+            <p className="facility-status" role="status">
+              Loading facility data…
+            </p>
+          ) : status === 'error' ? (
+            <div className="facility-status" role="alert">
+              <p>{error ?? 'The facility could not be loaded.'}</p>
+              <button type="button" onClick={reload}>
+                Try again
+              </button>
+            </div>
+          ) : (
+            <Outlet />
+          )}
         </div>
       </main>
     </div>

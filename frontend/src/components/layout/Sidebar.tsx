@@ -17,7 +17,7 @@ export function Sidebar({
   isMobileOpen,
   onCloseMobile,
 }: SidebarProps) {
-  const { settings } = useParkingState()
+  const { settings, dataset } = useParkingState()
 
   return (
     <aside
@@ -66,7 +66,9 @@ export function Sidebar({
 
       <div className="mobile-drawer__footer">
         <span className="mobile-drawer__dot" aria-hidden="true" />
-        <span>Simulated Telemetry Mode Active</span>
+        <span>
+          {dataset.isSimulated ? 'Simulated Telemetry Mode Active' : 'Live facility data'}
+        </span>
       </div>
     </aside>
   )

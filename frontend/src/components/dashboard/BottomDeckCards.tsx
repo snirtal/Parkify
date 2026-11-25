@@ -22,7 +22,7 @@ export function BottomDeckCards({ selectedBay }: BottomDeckCardsProps) {
           <span className="sentinel-card__handle" aria-hidden="true" />
           <div className="sentinel-card__meta">
             <span className="sentinel-card__tag">AI Optical Guard • {selectedBay.code}</span>
-            <span className="sentinel-card__sim">Simulated Feed</span>
+            <span className="sentinel-card__sim">Live feed</span>
           </div>
           <p className="sentinel-card__text">
             {message}

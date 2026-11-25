@@ -50,9 +50,9 @@ export function SpotInspectorPanel({
   const specBody = vehicle ? vehicle.bodyType : bay.bayClass.split(' ')[0]
 
   const leftCardTitle = vehicle
-    ? vehicle.driverName
+    ? vehicle.driverName || vehicle.plateNumber
     : bay.status === 'reserved'
-      ? (bay.reservedBy ?? 'VIP Pass Holder')
+      ? (bay.reservedBy ?? 'Reserved')
       : bay.status === 'available'
         ? 'Instant Check-In'
         : 'Field Tech Ops'
@@ -78,7 +78,9 @@ export function SpotInspectorPanel({
       ? 'Smart tariff'
       : bay.status === 'unavailable'
         ? 'Est. online'
-        : 'Reserved until'
+        : vehicle
+          ? 'Paid until'
+          : 'Reserved until'
 
   const rightCardSub =
     bay.status === 'available'
@@ -90,10 +92,10 @@ export function SpotInspectorPanel({
   const rightCardValue = vehicle
     ? vehicle.untilTime
     : bay.status === 'reserved'
-      ? (bay.reservedUntil ?? '16.30')
+      ? (bay.reservedUntil ?? '--.--')
       : bay.status === 'available'
         ? bay.ratePerHour
-        : '15.00'
+        : '--.--'
 
   return (
     <aside className="inspector-shell" aria-label="Selected parking space details">
@@ -215,7 +217,7 @@ export function SpotInspectorPanel({
           <div className="inspector-subview">
             <div className="inspector-subview__header">
               <h3>Zone Capacity Breakdown</h3>
-              <span>Simulated live distribution</span>
+              <span>Current zone distribution</span>
             </div>
 
             <ul className="inspector-zones">

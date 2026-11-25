@@ -6,6 +6,7 @@ Parkify is a real-time smart parking platform for garage occupancy, sessions, an
 
 - 3D parking map, active sessions, reservations, analytics, and facility settings.
 - Flask API for spots, sessions, reservations, pricing, gate activity, dashboard, analytics, and settings.
+- React app reads and updates that API through `/api`. The backend is the source of truth.
 - Neon PostgreSQL. Occupancy comes from sessions, reservations, and maintenance.
 - Docker Compose for the React frontend and the Flask API.
 
@@ -33,6 +34,8 @@ docker compose up --build -d
 API: http://127.0.0.1:5001
 Frontend: http://127.0.0.1:5173
 
+`npm run dev` in `frontend/` proxies `/api` to the local API. Docker serves the same paths through Nginx. Do not put database credentials in the frontend.
+
 ## API Examples
 
 ```bash
@@ -45,6 +48,7 @@ curl -s http://127.0.0.1:5001/api/facilities/facility-skyline/settings
 ## Testing
 
 ```bash
+cd frontend && npm test && npm run build
 pytest -v
 docker compose --profile test run --rm --no-deps -T --build backend-test
 ```
@@ -55,4 +59,3 @@ Database tests use `TEST_DATABASE_URL` and roll back. They skip when that URL is
 
 - Redis cache (planned). Cache-Aside in the service layer for dashboard, analytics, and settings, with TTL, invalidation, database fallback, Docker Compose, tests, and benchmarks. Postponed because PostgreSQL meets current performance needs.
 - Authentication.
-- Connect the React app to this API. The UI still uses local mock data.

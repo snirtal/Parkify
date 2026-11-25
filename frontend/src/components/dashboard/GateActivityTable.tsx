@@ -43,7 +43,7 @@ export function GateActivityTable({ events }: GateActivityTableProps) {
             <h2 id="gate-activity-title" className="dashboard-panel__title">
               Recent Gate Activity
             </h2>
-            <span className="dashboard-panel__sim-tag">Simulated</span>
+            <span className="dashboard-panel__sim-tag">Live</span>
           </div>
           <p className="dashboard-panel__subtitle">
             Latest vehicle barrier events across facility entry and exit lanes

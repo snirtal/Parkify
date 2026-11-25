@@ -14,7 +14,27 @@ export function RentalOccupancyChart({
 }: RentalOccupancyChartProps) {
   const [period, setPeriod] = useState<'today' | 'year'>('today')
   const series = period === 'today' ? todaySeries : yearlySeries
-  const [activeIdx, setActiveIdx] = useState(series.length - 1)
+  const [activeIdx, setActiveIdx] = useState(Math.max(series.length - 1, 0))
+
+  if (series.length === 0) {
+    return (
+      <div className="inspector-chart">
+        <div className="inspector-chart__head">
+          <span className="inspector-chart__title">
+            {period === 'today' ? 'Daily Occupancy' : 'Monthly Avg Occupancy'}
+          </span>
+          <button
+            type="button"
+            className="inspector-chart__period-btn"
+            onClick={() => setPeriod(period === 'today' ? 'year' : 'today')}
+          >
+            <span>{period === 'today' ? 'Today' : 'This year'}</span>
+          </button>
+        </div>
+        <p className="inspector-chart__live-val">No stored occupancy for this period.</p>
+      </div>
+    )
+  }
 
   const safeIdx = Math.min(activeIdx, series.length - 1)
   const activePoint = series[safeIdx]
