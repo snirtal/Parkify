@@ -8,11 +8,13 @@ from datetime import datetime
 
 from models.orm import FacilitySettings, ParkingSession, Reservation
 
+from services.exceptions import NotFoundError
 from services.pricing import PricingService
 from services.results import (
     FacilityOccupancy,
     FloorOccupancy,
     OccupancyCounts,
+    ParkingQuote,
     SpotAvailability,
     ZoneOccupancy,
 )
@@ -87,6 +89,26 @@ class ParkingService:
         found = run_in_transaction(self._uow_factory, work)
         logger.debug("search_spots facility=%s count=%s", facility_id, len(found))
         return found
+
+    def quote_stay(
+        self,
+        facility_id: str,
+        spot_code: str,
+        started_at: datetime,
+        ended_at: datetime,
+    ) -> ParkingQuote:
+        """Price a stay with the existing rules. The amount is not stored."""
+
+        def work(uow) -> ParkingQuote:
+            repos = uow.repositories
+            require_facility(repos, facility_id)
+            settings = require_settings(repos, facility_id)
+            spot = repos.spots.get_by_code(spot_code.strip().upper())
+            if spot is None or spot.floor is None or spot.floor.facility_id != facility_id:
+                raise NotFoundError("Parking spot was not found in this facility.")
+            return self._pricing.quote(spot, settings, started_at, ended_at)
+
+        return run_in_transaction(self._uow_factory, work)
 
 
 def load_occupancy(repos, clock: Clock, facility_id: str, at: datetime | None, pricing: PricingService):

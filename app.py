@@ -7,9 +7,10 @@ from flask_cors import CORS
 
 from config.database import init_database
 from config.settings import Settings, get_settings
-from controllers.health_controller import health_bp
+from controllers import register_api
 from utils.errors import register_error_handlers
 from utils.logging_setup import setup_logging
+from utils.request_logging import register_request_logging
 
 
 def create_app(environment: str | None = None) -> Flask:
@@ -29,6 +30,7 @@ def create_app(environment: str | None = None) -> Flask:
     setup_logging(settings)
     init_database(app)
     register_error_handlers(app)
+    register_request_logging(app)
 
     CORS(
         app,
@@ -36,7 +38,7 @@ def create_app(environment: str | None = None) -> Flask:
         supports_credentials=False,
     )
 
-    app.register_blueprint(health_bp)
+    register_api(app)
     return app
 
 

@@ -8,6 +8,8 @@ from typing import Any
 from flask import Flask, jsonify
 from werkzeug.exceptions import HTTPException
 
+from services.exceptions import ConflictError, DomainError, NotFoundError, ValidationError
+
 logger = logging.getLogger("parkify.errors")
 
 
@@ -49,6 +51,19 @@ def error_payload(
 
 def register_error_handlers(app: Flask) -> None:
     """Register centralized JSON error handlers on the Flask app."""
+
+    @app.errorhandler(DomainError)
+    def handle_domain_error(exc: DomainError):
+        if isinstance(exc, NotFoundError):
+            status_code = 404
+        elif isinstance(exc, ConflictError):
+            status_code = 409
+        elif isinstance(exc, ValidationError):
+            status_code = 400
+        else:
+            status_code = 400
+        logger.info("Domain error [%s]: %s", exc.code, exc.message)
+        return jsonify(error_payload(code=exc.code, message=exc.message)), status_code
 
     @app.errorhandler(AppError)
     def handle_app_error(exc: AppError):

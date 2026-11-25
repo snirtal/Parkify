@@ -186,7 +186,7 @@ Those calls commit. The automated tests build the same services around the rolle
 
 | Service | Methods |
 | --- | --- |
-| `parking` | `summarize`, `search_spots` |
+| `parking` | `summarize`, `search_spots`, `quote_stay` |
 | `sessions` | `start_session`, `complete_session`, `list_active_sessions` |
 | `reservations` | `create_reservation`, `get_reservation`, `list_reservations`, `update_reservation`, `cancel_reservation`, `refresh_lifecycle` |
 | `pricing` | `displayed_hourly_rate`, `quote` |
@@ -220,7 +220,7 @@ Settings validation matches the screen: hourly rate from 0.01 through 500.00, da
 
 ### Errors
 
-Services raise `ValidationError`, `NotFoundError`, or `ConflictError`. Each has a stable `code` such as `spot_occupied`, `spot_unavailable`, `spot_reserved`, `vehicle_already_parked`, `reservation_overlap`, `reservation_closed`, `session_not_active`, or `concurrent_update`. These are domain errors. HTTP mapping belongs to a later controller.
+Services raise `ValidationError`, `NotFoundError`, or `ConflictError`. Each has a stable `code` such as `spot_occupied`, `spot_unavailable`, `spot_reserved`, `vehicle_already_parked`, `reservation_overlap`, `reservation_closed`, `session_not_active`, or `concurrent_update`. Controllers map those to HTTP 400, 404, and 409. The JSON body is always `{"error": {"code", "message"}}`.
 
 Service tests that do not need PostgreSQL are in `tests/test_services_unit.py`. Integration tests use the same isolated Neon branch and rollback as the repository tests. `tests/test_services_concurrency.py` commits two temporary rows on that branch, checks that only one entry wins, and deletes those rows. It does not touch the seeded facility.
 
@@ -268,21 +268,108 @@ docker compose exec backend python -c "import logging; logging.disable(logging.C
 - Neon connectivity fails: confirm the pooled `DATABASE_URL` in `.env` uses `sslmode=require`, then start the backend again. Do not print the URL.
 - Docker tests must use `docker compose --profile test run --rm --no-deps -T --build backend-test`. Do not bind-mount the repository over `/app` and do not copy tests into `parkify-backend`.
 
-## API Examples
+## Controllers and REST API
 
-Health check:
+Controllers live in `controllers/` and are registered with Flask blueprints. A controller validates the HTTP request, calls one service method, and serializes the result. It does not execute SQL and does not decide occupancy, pricing, or reservation overlap. `build_services(unit_of_work_factory(...))` opens one unit of work per operation, so a gate entry still stores the session and the gate event together, or stores neither.
+
+`GET` requests do not write. `POST /entries` and `POST /exits` call the gate service. `POST /quotes` calculates a charge and does not store it. `POST /reservations/<id>/cancellation` keeps the row and sets its status to Cancelled.
+
+There is no authentication or authorization. Any client that can reach the API can read and change facility data. Add an auth layer before exposing this API beyond a trusted network.
+
+Money and occupancy percentages are JSON strings (`"4.20"`, `"58.3"`) so the decimal scale survives. Timestamps are facility-local `YYYY-MM-DDTHH:MM:SS` values with no `Z` and no offset. Omitted update fields keep their stored values. `null` and JSON floats are rejected. Unknown body fields are ignored.
+
+| Method | Path | Success | Notes |
+| --- | --- | --- | --- |
+| GET | `/api/health` | 200 | Process health. Does not query the database |
+| GET | `/api/facilities/<facility_id>/spots` | 200 | `floor_id`, `floor_code`, `zone_id`, `zone_code`, `status`, `bay_class`, `query` |
+| GET | `/api/facilities/<facility_id>/spots/<spot_code>` | 200 | One derived spot |
+| GET | `/api/facilities/<facility_id>/occupancy` | 200 | Counts, floors, zones, and spots |
+| GET | `/api/facilities/<facility_id>/sessions` | 200 | Active sessions |
+| POST | `/api/facilities/<facility_id>/entries` | 201 | Gate entry. Body: `plate_number`, `spot_code`, optional `gate_name`, `driver_name`, `at` |
+| POST | `/api/facilities/<facility_id>/exits` | 200 | Gate exit. Body: `plate_number` or `session_id` |
+| GET | `/api/facilities/<facility_id>/reservations` | 200 | `status`, `spot_code`, `plate_number`, `range_start`, `range_end` |
+| POST | `/api/facilities/<facility_id>/reservations` | 201 | Body: `plate_number`, `spot_code`, `starts_at`, `ends_at`, optional `driver_name` |
+| GET | `/api/facilities/<facility_id>/reservations/<reservation_id>` | 200 | Includes `effective_status` |
+| PATCH | `/api/facilities/<facility_id>/reservations/<reservation_id>` | 200 | At least one of plate, spot, start, end, or driver |
+| POST | `/api/facilities/<facility_id>/reservations/<reservation_id>/cancellation` | 200 | Status becomes Cancelled |
+| POST | `/api/facilities/<facility_id>/reservations/lifecycle` | 200 | Persists clock-driven status changes |
+| POST | `/api/facilities/<facility_id>/quotes` | 200 | Body: `spot_code`, `started_at`, `ended_at`. Charge is not stored |
+| GET | `/api/facilities/<facility_id>/gate-activity` | 200 | `direction`, `status`, `spot_code`, `plate_number`, `occurred_from`, `occurred_to`, `limit` (1–100), `offset` |
+| GET | `/api/facilities/<facility_id>/dashboard` | 200 | Optional `recent_limit` (1–100, default 6) |
+| GET | `/api/facilities/<facility_id>/analytics/occupancy` | 200 | Required `start` and `end`. Optional `bucket_minutes` (15–1440) |
+| GET | `/api/facilities/<facility_id>/analytics/floors` | 200 | Current floor counts |
+| GET | `/api/facilities/<facility_id>/analytics/zones` | 200 | Current zone counts |
+| GET | `/api/facilities/<facility_id>/settings` | 200 | Facility profile, prices, and alert toggles |
+| PATCH | `/api/facilities/<facility_id>/settings` | 200 | Partial update. Rates are decimal strings |
+
+Validation failures return 400. Unknown facilities, spots, reservations, and sessions return 404. Conflicts such as `spot_occupied` and `reservation_overlap` return 409. An unsupported method returns 405. An unexpected failure returns 500 with `internal_server_error` and no stack trace or connection string. Each response is logged as method, path, status, and duration. Bodies and query strings are not logged.
 
 ```bash
 curl -s http://127.0.0.1:5001/api/health
+curl -s "http://127.0.0.1:5001/api/facilities/facility-skyline/spots?status=available"
+curl -s http://127.0.0.1:5001/api/facilities/facility-skyline/dashboard
+curl -s http://127.0.0.1:5001/api/facilities/facility-skyline/settings
 ```
 
-Example response:
+Quote request:
+
+```bash
+curl -s -X POST http://127.0.0.1:5001/api/facilities/facility-skyline/quotes \
+  -H 'Content-Type: application/json' \
+  -d '{"spot_code":"P-210","started_at":"2026-11-25T14:24:00","ended_at":"2026-11-25T16:24:00"}'
+```
 
 ```json
 {
-  "status": "ok",
-  "service": "Parkify",
-  "environment": "development",
-  "version": "0.1.0"
+  "started_at": "2026-11-25T14:24:00",
+  "ended_at": "2026-11-25T16:24:00",
+  "duration_seconds": 7200,
+  "duration_label": "2h 00m",
+  "hourly_rate": "3.50",
+  "billable_hours": 2,
+  "amount": "7.00",
+  "grace_applied": false,
+  "daily_maximum": "28.00"
 }
 ```
+
+Entry request. This writes a session and a gate event:
+
+```bash
+curl -s -X POST http://127.0.0.1:5001/api/facilities/facility-skyline/entries \
+  -H 'Content-Type: application/json' \
+  -d '{"plate_number":"API-100","spot_code":"P-210"}'
+```
+
+Conflict response:
+
+```json
+{
+  "error": {
+    "code": "spot_occupied",
+    "message": "Space P-210 is occupied."
+  }
+}
+```
+
+The message above is the service text for an occupied spot. A second entry for a different reason uses that reason's code.
+
+Controller request tests that do not open a database connection are in `tests/test_api_requests.py`. API integration tests in `tests/test_api.py` use the Flask test client and the rolled-back `TEST_DATABASE_URL` transaction. Run both with the rest of the suite:
+
+```bash
+pytest -v
+docker compose --profile test run --rm --no-deps -T --build backend-test
+```
+
+### Known limitations
+
+- The API does not authenticate callers.
+- The React app still reads its local simulated dataset. It uses camelCase fields such as `bayCode` and `plateNumber`. These endpoints use snake_case and are not wired to the frontend.
+- The frontend treats a later reservation on the simulated date as a hold. The API reserves a spot only while the window contains the facility clock.
+- The frontend creates a gate row when a reservation is saved. The API inserts a gate row only on entry or exit.
+- Analytics returns stored session history. It does not return the frontend's illustrated occupancy curve.
+- Vehicle reservation overlap is enforced by the service lock, not by a database constraint.
+- An expired unused reservation and a fulfilled one both become `Completed`. Fulfillment is an entry gate event whose `reservation_id` is set.
+- Rejected gate attempts are logged and returned as errors. They are not stored.
+- Calculated charges are returned on exit and on `POST /quotes`. They are not stored.
+- `POST /reservations/lifecycle` and every other write changes the database. Use the isolated test branch for experiments. Do not point `TEST_DATABASE_URL` at the primary database.
