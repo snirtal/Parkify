@@ -1,4 +1,5 @@
-"""Data-access layer package.
+"""Data-access layer.
 
-Repositories will be introduced when persistence is added in later phases.
+repositories.seed loads the facility snapshot. Request-scoped sessions live
+in config.database.
 """

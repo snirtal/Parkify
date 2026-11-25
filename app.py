@@ -5,6 +5,7 @@ from __future__ import annotations
 from flask import Flask
 from flask_cors import CORS
 
+from config.database import init_database
 from config.settings import Settings, get_settings
 from controllers.health_controller import health_bp
 from utils.errors import register_error_handlers
@@ -26,6 +27,7 @@ def create_app(environment: str | None = None) -> Flask:
     app.config["PARKIFY_SETTINGS"] = settings
 
     setup_logging(settings)
+    init_database(app)
     register_error_handlers(app)
 
     CORS(

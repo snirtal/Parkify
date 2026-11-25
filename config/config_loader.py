@@ -90,13 +90,19 @@ def apply_env_overrides(raw: dict[str, Any]) -> dict[str, Any]:
         "app": app,
         "logging": logging_cfg,
         "cors": cors,
+        "database_url": os.getenv("DATABASE_URL", "").strip(),
         "raw": raw,
     }
 
 
+def load_project_env() -> None:
+    """Load the repository .env file without overriding variables already set."""
+    load_dotenv(PROJECT_ROOT / ".env")
+
+
 def load_config(environment: str | None = None) -> dict[str, Any]:
     """Load dotenv, YAML config, and environment overrides."""
-    load_dotenv(PROJECT_ROOT / ".env")
+    load_project_env()
     resolved = resolve_environment(environment)
     yaml_data = load_yaml_config(resolved)
     merged = apply_env_overrides(yaml_data)

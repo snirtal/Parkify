@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 
 from config.config_loader import load_config
+from config.database import normalize_database_url
 
 
 @dataclass(frozen=True)
@@ -20,6 +21,7 @@ class Settings:
     secret_key: str
     log_level: str
     log_format: str
+    database_url: str
     cors_origins: list[str] = field(default_factory=list)
 
     @property
@@ -50,6 +52,7 @@ def build_settings(environment: str | None = None) -> Settings:
             logging_cfg.get("format")
             or "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
         ),
+        database_url=normalize_database_url(str(config.get("database_url") or "")),
         cors_origins=list(origins),
     )
 
