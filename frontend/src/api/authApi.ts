@@ -1,7 +1,8 @@
 import { apiRequest } from './client'
+import { CSRF_COOKIE } from './csrfCookie'
 
 /** Readable CSRF cookie. The session JWT stays in the HttpOnly cookie. */
-export const CSRF_COOKIE = 'parkify_csrf'
+export { CSRF_COOKIE }
 export const CSRF_HEADER = 'X-CSRF-Token'
 
 export interface AuthUser {

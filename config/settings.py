@@ -31,6 +31,8 @@ class Settings:
     jwt_expiration_minutes: int = 60
     cookie_secure: bool = False
     cookie_samesite: str = "Lax"
+    session_cookie: str = "parkify_session"
+    csrf_cookie: str = "parkify_csrf"
     login_max_attempts: int = 5
     login_window_seconds: int = 900
     reservation_request_limit: int = 8
@@ -52,9 +54,10 @@ def build_settings(environment: str | None = None) -> Settings:
         origins = [item.strip() for item in origins.split(",") if item.strip()]
 
     auth = config.get("auth") or {}
-    return Settings(
+    environment = str(config.get("environment") or "development")
+    settings = Settings(
         app_name=str(app.get("name") or "Parkify"),
-        environment=str(config.get("environment") or "development"),
+        environment=environment,
         debug=bool(app.get("debug", False)),
         host=str(app.get("host") or "127.0.0.1"),
         port=int(app.get("port") or 5001),
@@ -90,18 +93,20 @@ def build_settings(environment: str | None = None) -> Settings:
             minimum=1,
             maximum=8,
         ),
-        jwt_secret=_jwt_secret(str(auth.get("jwt_secret") or ""), environment=str(config.get("environment") or "development")),
+        jwt_secret=_jwt_secret(str(auth.get("jwt_secret") or ""), environment=environment),
         jwt_expiration_minutes=_bounded_int(
             auth.get("jwt_expiration_minutes", 60),
             "jwt_expiration_minutes",
             minimum=5,
             maximum=720,
         ),
-        cookie_secure=_cookie_secure(auth.get("cookie_secure", False), environment=str(config.get("environment") or "development")),
+        cookie_secure=_cookie_secure(auth.get("cookie_secure", False), environment=environment),
         cookie_samesite=_cookie_samesite(
             str(auth.get("cookie_samesite") or "Lax"),
-            secure=_cookie_secure(auth.get("cookie_secure", False), environment=str(config.get("environment") or "development")),
+            secure=_cookie_secure(auth.get("cookie_secure", False), environment=environment),
         ),
+        session_cookie=str(auth.get("session_cookie") or "parkify_session"),
+        csrf_cookie=str(auth.get("csrf_cookie") or "parkify_csrf"),
         login_max_attempts=_bounded_int(
             auth.get("login_max_attempts", 5),
             "login_max_attempts",
@@ -121,6 +126,12 @@ def build_settings(environment: str | None = None) -> Settings:
             maximum=100,
         ),
     )
+    if environment == "demo":
+        from config.demo_guard import assert_demo_cookie_names, assert_demo_database
+
+        assert_demo_database(str(config.get("database_url") or ""))
+        assert_demo_cookie_names(settings.session_cookie, settings.csrf_cookie)
+    return settings
 
 
 def _jwt_secret(value: str, *, environment: str) -> str:
@@ -132,7 +143,7 @@ def _jwt_secret(value: str, *, environment: str) -> str:
         "dev-only-jwt-secret-change-me",
         "dev-only-jwt-secret-change-me-local",
     }
-    if environment == "production" and (secret in placeholders or len(secret) < 32):
+    if environment in {"production", "demo"} and (secret in placeholders or len(secret) < 32):
         raise ValueError("Set JWT_SECRET to a long random value before running in production.")
     if len(secret) < 16:
         raise ValueError("JWT secret must be at least 16 characters.")

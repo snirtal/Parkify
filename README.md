@@ -8,13 +8,25 @@ Occupancy is derived from open sessions, covering reservations, and maintenance.
 
 HTTP controllers call services. Services apply the business rules and transactions. Repositories own SQLAlchemy access. The React app and the simulator call `/api` and do not hold database credentials.
 
-Sign-in creates a server-side session and a JWT. The JWT is stored only in the HttpOnly `parkify_session` cookie. Changes also require the `parkify_csrf` cookie and an `X-CSRF-Token` header. Roles come from the user row, not from the request.
+Sign-in creates a server-side session and a JWT. The JWT is stored only in the HttpOnly `parkify_session` cookie. Changes also require the `parkify_csrf` cookie and an `X-CSRF-Token` header. The Docker demo uses `parkify_demo_session` and `parkify_demo_csrf` instead. Roles come from the user row, not from the request.
 
 ```mermaid
 flowchart LR
   UI[React UI] --> API[Flask API]
   Simulator[Simulator] --> API
   API --> DB[(PostgreSQL)]
+```
+
+The standalone Docker demo adds a local database and an initializer. It does not use Neon.
+
+```mermaid
+flowchart LR
+  Browser[Browser] --> Frontend[Frontend]
+  Frontend --> Backend[Backend]
+  Simulator[Simulator] --> Backend
+  Simulator --> Postgres[(PostgreSQL)]
+  Init[Initialization] --> Postgres
+  Backend --> Postgres
 ```
 
 ```text
@@ -32,7 +44,7 @@ docker/         Images
 
 ## Stack
 
-React, TypeScript, Vite, Three.js, and Nginx. Python, Flask, SQLAlchemy, Alembic, Argon2id, and PyJWT. Neon PostgreSQL. Docker Compose.
+React, TypeScript, Vite, Three.js, and Nginx. Python, Flask, SQLAlchemy, Alembic, Argon2id, and PyJWT. PostgreSQL, either through Neon or the local Docker demo. Docker Compose.
 
 ## Quick start
 
@@ -63,6 +75,45 @@ make start
 UI: http://127.0.0.1:5174/ · API: http://127.0.0.1:5002
 
 `npm run dev` in `frontend/` proxies `/api` to port 5001. Use that only against an API you intend to change.
+
+## Standalone Docker demo
+
+Prerequisite: Docker Desktop or Docker Engine with Compose. No host Python, Node.js, Neon account, or `.env` file is required.
+
+```bash
+git clone https://github.com/snirtal/Parkify.git
+cd Parkify
+docker compose -f compose.demo.yaml up --build -d
+```
+
+UI: http://127.0.0.1:5175 · API: http://127.0.0.1:5003
+
+PostgreSQL starts first. Initialization runs Alembic and, on an empty volume, seeds the facility and three accounts. The backend starts after initialization succeeds. The frontend and simulator start after the backend is healthy.
+
+| Account | Password |
+|---|---|
+| admin@parkify.demo | Demo-Admin-Pass1 |
+| employee@parkify.demo | Demo-Employee-Pass1 |
+
+The simulator signs in as `simulator@parkify.demo`. These passwords and the plain-HTTP cookies exist only for a local demonstration. Do not publish this stack or reuse these values in production.
+
+Demo sessions use `parkify_demo_session` and `parkify_demo_csrf`, so they do not replace a session from the isolated app on port 5174. The session JWT stays in the HttpOnly cookie.
+
+```bash
+docker compose -f compose.demo.yaml logs -f
+docker compose -f compose.demo.yaml logs -f simulator
+docker compose -f compose.demo.yaml stop simulator
+docker compose -f compose.demo.yaml start simulator
+docker compose -f compose.demo.yaml down
+```
+
+`down` stops the containers and keeps the named volume `parkify-demo-data`. The next `up` reuses that data. Initialization sees the existing facility and accounts and does not overwrite them. The volume is independent of Neon.
+
+This deletes every row in the demo volume, including reservations, sessions, and the demo accounts:
+
+```bash
+docker compose -f compose.demo.yaml down -v
+```
 
 ## User roles
 
@@ -145,7 +196,7 @@ Logout is `POST /api/auth/logout` with the same cookie and CSRF header. It retur
 
 ## Docker
 
-Compose publishes the API on http://127.0.0.1:5001 and the UI on http://127.0.0.1:5173. Nginx proxies `/api` to the backend. Both services have health checks. `/api/health` does not require a session.
+`compose.yaml` is the existing Neon workflow. It is separate from the standalone demo above. Compose publishes the API on http://127.0.0.1:5001 and the UI on http://127.0.0.1:5173. Nginx proxies `/api` to the backend. Both services have health checks. `/api/health` does not require a session.
 
 The API container runs with `PARKIFY_ENV=production`. Set `JWT_SECRET` in `.env` before `docker compose up --build -d`. Production session cookies are `Secure` and `SameSite=Strict`. Browsers store `Secure` cookies only on HTTPS, so browser login needs a TLS terminator in front of the published HTTP ports. Do not turn `Secure` off to make plain HTTP work. curl can still send the cookies itself.
 

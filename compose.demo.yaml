@@ -1,0 +1,170 @@
+# Local Parkify demo. This file does not read Neon URLs from .env.
+# Start: docker compose -f compose.demo.yaml up --build -d
+# Stop:  docker compose -f compose.demo.yaml down
+# The named volume keeps demo data. Add -v only when you intend to delete it.
+#
+# Demo accounts, created once and never overwritten:
+#   admin@parkify.demo      Demo-Admin-Pass1
+#   employee@parkify.demo   Demo-Employee-Pass1
+#   simulator@parkify.demo  Demo-Simulator-Pass1
+
+name: parkify-demo
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: parkify-demo-postgres
+    environment:
+      POSTGRES_USER: parkify
+      POSTGRES_PASSWORD: parkify
+      POSTGRES_DB: parkify
+    volumes:
+      - parkify-demo-data:/var/lib/postgresql/data
+    networks:
+      - parkify-demo
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U parkify -d parkify"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  init:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+      target: runtime
+    image: parkify-demo-backend
+    container_name: parkify-demo-init
+    working_dir: /app
+    entrypoint: ["python", "/demo/init_demo.py"]
+    environment:
+      DATABASE_URL: postgresql://parkify:parkify@postgres:5432/parkify?sslmode=disable
+      MIGRATION_DATABASE_URL: postgresql://parkify:parkify@postgres:5432/parkify?sslmode=disable
+      PARKIFY_ENV: production
+      JWT_SECRET: parkify-demo-jwt-secret-not-for-production
+      SECRET_KEY: parkify-demo-flask-secret
+      PYTHONPATH: /app
+    volumes:
+      - ./docker/demo/init_demo.py:/demo/init_demo.py:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - parkify-demo
+    restart: "no"
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+      target: runtime
+    image: parkify-demo-backend
+    container_name: parkify-demo-backend
+    environment:
+      DATABASE_URL: postgresql://parkify:parkify@postgres:5432/parkify?sslmode=disable
+      SECRET_KEY: parkify-demo-flask-secret
+      JWT_SECRET: parkify-demo-jwt-secret-not-for-production
+      PARKIFY_ENV: demo
+      COOKIE_SECURE: "false"
+      COOKIE_SAMESITE: Lax
+      SESSION_COOKIE_NAME: parkify_demo_session
+      CSRF_COOKIE_NAME: parkify_demo_csrf
+      HOST: 0.0.0.0
+      PORT: "5001"
+      DEBUG: "false"
+      LOG_LEVEL: INFO
+      CORS_ORIGINS: http://127.0.0.1:5175,http://localhost:5175
+    ports:
+      - "127.0.0.1:5003:5001"
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    networks:
+      - parkify-demo
+    init: true
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5001/api/health', timeout=3)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+      args:
+        VITE_CSRF_COOKIE: parkify_demo_csrf
+    image: parkify-demo-frontend
+    container_name: parkify-demo-frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:5175:80"
+    networks:
+      - parkify-demo
+    init: true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  simulator:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+      target: runtime
+    image: parkify-demo-backend
+    container_name: parkify-demo-simulator
+    working_dir: /app
+    entrypoint: ["python", "/app/scripts/live_parking_simulator.py"]
+    environment:
+      DATABASE_URL: postgresql://parkify:parkify@postgres:5432/parkify?sslmode=disable
+      PARKIFY_ENV: demo
+      COOKIE_SECURE: "false"
+      COOKIE_SAMESITE: Lax
+      SESSION_COOKIE_NAME: parkify_demo_session
+      CSRF_COOKIE_NAME: parkify_demo_csrf
+      PARKIFY_API_BASE: http://backend:5001
+      PARKIFY_CSRF_COOKIE: parkify_demo_csrf
+      JWT_SECRET: parkify-demo-jwt-secret-not-for-production
+      SECRET_KEY: parkify-demo-flask-secret
+      SIMULATOR_EMAIL: simulator@parkify.demo
+      SIMULATOR_PASSWORD: Demo-Simulator-Pass1
+      SIMULATOR_REQUEST_EVERY_TICKS: "4"
+      PYTHONPATH: /app
+    volumes:
+      - ./scripts:/app/scripts:ro
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      backend:
+        condition: service_healthy
+    networks:
+      - parkify-demo
+    init: true
+    restart: unless-stopped
+
+networks:
+  parkify-demo:
+    name: parkify-demo
+    driver: bridge
+
+volumes:
+  parkify-demo-data:
+    name: parkify-demo-data
