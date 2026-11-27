@@ -6,6 +6,7 @@ from random import Random
 import pytest
 
 from scripts.live_parking_simulator import (
+    SimulatorClient,
     choose_gate_action,
     generate_plate,
     next_facility_moment,
@@ -96,6 +97,30 @@ def test_simulator_refuses_to_start_without_credentials(monkeypatch):
     monkeypatch.delenv("SIMULATOR_PASSWORD", raising=False)
     with pytest.raises(SystemExit, match="credentials"):
         simulator_credentials()
+
+
+def test_simulator_signs_in_again_after_the_session_expires():
+    client = SimulatorClient("simulator@parkify.example", "not-a-real-password")
+    signed_in = {"value": False}
+    calls: list[str] = []
+
+    def open_stub(method: str, url: str, payload: dict | None):
+        calls.append(f"{method} {url}")
+        if url.endswith("/api/auth/login"):
+            signed_in["value"] = True
+            return 200, {"user": {"role": "simulator"}}
+        if not signed_in["value"]:
+            return 401, {"error": {"code": "unauthenticated"}}
+        return 200, {"spots": []}
+
+    client._open = open_stub
+    client._csrf = lambda: "csrf-token" if signed_in["value"] else ""
+    status, body = client.request("GET", "/occupancy")
+    assert status == 200
+    assert body == {"spots": []}
+    assert calls[0].endswith("/occupancy")
+    assert "/api/auth/login" in calls[1]
+    assert calls[2].endswith("/occupancy")
 
 
 def test_facility_clock_moves_forward_by_five_minutes():
