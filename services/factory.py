@@ -14,6 +14,8 @@ from services.sessions import ParkingSessionService
 from services.settings import SettingsService
 from services.passwords import Argon2PasswordHasher, PasswordHasherProtocol
 from services.support import Clock, FacilityClock, IdFactory, default_id
+from services.auth import AuthService, LoginRateLimiter
+from services.tokens import TokenService
 from services.users import UserService
 
 
@@ -30,6 +32,7 @@ class Services:
     analytics: AnalyticsService
     settings: SettingsService
     users: UserService
+    auth: AuthService
 
 
 def build_services(
@@ -39,6 +42,7 @@ def build_services(
     ids: IdFactory | None = None,
     passwords: PasswordHasherProtocol | None = None,
     password_min_length: int | None = None,
+    rate_limiter: LoginRateLimiter | None = None,
 ) -> Services:
     """Inject the transaction factory, clock, and id generator into every service."""
     from config.settings import get_settings
@@ -50,6 +54,14 @@ def build_services(
         passwords = passwords or Argon2PasswordHasher.from_settings(settings)
         if password_min_length is None:
             password_min_length = settings.password_min_length
+    else:
+        settings = get_settings()
+    if rate_limiter is None:
+        rate_limiter = LoginRateLimiter(
+            max_attempts=settings.login_max_attempts,
+            window_seconds=settings.login_window_seconds,
+        )
+    tokens = TokenService(secret=settings.jwt_secret, expiration_minutes=settings.jwt_expiration_minutes)
     pricing = PricingService()
     sessions = ParkingSessionService(uow_factory, resolved_clock, resolved_ids, pricing)
     return Services(
@@ -67,4 +79,5 @@ def build_services(
             passwords,
             password_min_length=password_min_length,
         ),
+        auth=AuthService(uow_factory, passwords, tokens, rate_limiter),
     )

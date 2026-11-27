@@ -61,7 +61,7 @@ def register_error_handlers(app: Flask) -> None:
         elif isinstance(exc, ValidationError):
             status_code = 400
         else:
-            status_code = 400
+            status_code = getattr(exc, "status_code", None) or 400
         logger.info("Domain error [%s]: %s", exc.code, exc.message)
         return jsonify(error_payload(code=exc.code, message=exc.message)), status_code
 

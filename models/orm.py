@@ -320,3 +320,27 @@ class User(Base):
 
     def __repr__(self) -> str:
         return f"User(id={self.id!r}, role={self.role!r}, is_active={self.is_active!r})"
+
+
+class AuthSession(Base):
+    """A server-side login session. Logout deletes the row and invalidates its JWT."""
+
+    __tablename__ = "auth_sessions"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    user: Mapped[User] = relationship()
+
+    def __repr__(self) -> str:
+        return f"AuthSession(id={self.id!r}, user_id={self.user_id!r})"

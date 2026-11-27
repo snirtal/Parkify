@@ -88,6 +88,18 @@ def apply_env_overrides(raw: dict[str, Any]) -> dict[str, Any]:
         cors["origins"] = _parse_origins(cors_origins)
     if password_min_length := os.getenv("PASSWORD_MIN_LENGTH"):
         auth["password_min_length"] = password_min_length
+    if jwt_secret := os.getenv("JWT_SECRET"):
+        auth["jwt_secret"] = jwt_secret
+    if jwt_expiration := os.getenv("JWT_EXPIRATION_MINUTES"):
+        auth["jwt_expiration_minutes"] = jwt_expiration
+    if cookie_secure := os.getenv("COOKIE_SECURE"):
+        auth["cookie_secure"] = cookie_secure
+    if cookie_samesite := os.getenv("COOKIE_SAMESITE"):
+        auth["cookie_samesite"] = cookie_samesite
+    if login_max_attempts := os.getenv("LOGIN_MAX_ATTEMPTS"):
+        auth["login_max_attempts"] = login_max_attempts
+    if login_window := os.getenv("LOGIN_WINDOW_SECONDS"):
+        auth["login_window_seconds"] = login_window
 
     return {
         "app": app,

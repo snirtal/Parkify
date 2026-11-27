@@ -27,6 +27,12 @@ class Settings:
     argon2_time_cost: int = 2
     argon2_memory_kib: int = 19456
     argon2_parallelism: int = 1
+    jwt_secret: str = ""
+    jwt_expiration_minutes: int = 60
+    cookie_secure: bool = False
+    cookie_samesite: str = "Lax"
+    login_max_attempts: int = 5
+    login_window_seconds: int = 900
 
     @property
     def is_production(self) -> bool:
@@ -83,7 +89,66 @@ def build_settings(environment: str | None = None) -> Settings:
             minimum=1,
             maximum=8,
         ),
+        jwt_secret=_jwt_secret(str(auth.get("jwt_secret") or ""), environment=str(config.get("environment") or "development")),
+        jwt_expiration_minutes=_bounded_int(
+            auth.get("jwt_expiration_minutes", 60),
+            "jwt_expiration_minutes",
+            minimum=5,
+            maximum=720,
+        ),
+        cookie_secure=_cookie_secure(auth.get("cookie_secure", False), environment=str(config.get("environment") or "development")),
+        cookie_samesite=_cookie_samesite(
+            str(auth.get("cookie_samesite") or "Lax"),
+            secure=_cookie_secure(auth.get("cookie_secure", False), environment=str(config.get("environment") or "development")),
+        ),
+        login_max_attempts=_bounded_int(
+            auth.get("login_max_attempts", 5),
+            "login_max_attempts",
+            minimum=1,
+            maximum=50,
+        ),
+        login_window_seconds=_bounded_int(
+            auth.get("login_window_seconds", 900),
+            "login_window_seconds",
+            minimum=60,
+            maximum=86_400,
+        ),
     )
+
+
+def _jwt_secret(value: str, *, environment: str) -> str:
+    secret = value.strip()
+    placeholders = {
+        "",
+        "change-me",
+        "change-me-in-production",
+        "dev-only-jwt-secret-change-me",
+        "dev-only-jwt-secret-change-me-local",
+    }
+    if environment == "production" and (secret in placeholders or len(secret) < 32):
+        raise ValueError("Set JWT_SECRET to a long random value before running in production.")
+    if len(secret) < 16:
+        raise ValueError("JWT secret must be at least 16 characters.")
+    return secret
+
+
+def _cookie_secure(value: object, *, environment: str) -> bool:
+    if isinstance(value, str):
+        secure = value.strip().lower() in {"1", "true", "yes", "on"}
+    else:
+        secure = bool(value)
+    if environment == "production" and not secure:
+        raise ValueError("Production session cookies must be Secure.")
+    return secure
+
+
+def _cookie_samesite(value: str, *, secure: bool) -> str:
+    cleaned = value.strip().title()
+    if cleaned not in {"Lax", "Strict", "None"}:
+        raise ValueError("cookie_samesite must be Lax, Strict, or None.")
+    if cleaned == "None" and not secure:
+        raise ValueError("SameSite=None cookies must be Secure.")
+    return cleaned
 
 
 def _bounded_int(value: object, label: str, *, minimum: int, maximum: int) -> int:

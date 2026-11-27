@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
+from repositories.auth_sessions import AuthSessionRepository, SqlAlchemyAuthSessionRepository
 from repositories.facilities import (
     FacilityRepository,
     FacilitySettingsRepository,
@@ -36,6 +37,7 @@ class Repositories:
     reservations: ReservationRepository
     gate_activities: GateActivityRepository
     users: UserRepository
+    auth_sessions: AuthSessionRepository
 
 
 def build_repositories(session: Session) -> Repositories:
@@ -51,4 +53,5 @@ def build_repositories(session: Session) -> Repositories:
         reservations=SqlAlchemyReservationRepository(session),
         gate_activities=SqlAlchemyGateActivityRepository(session),
         users=SqlAlchemyUserRepository(session),
+        auth_sessions=SqlAlchemyAuthSessionRepository(session),
     )

@@ -62,6 +62,7 @@ def _hide_committed_activity(session: Session) -> None:
     These deletes stay inside the connection transaction started above and are
     rolled back with it. Nothing is committed.
     """
+    session.execute(text("DELETE FROM auth_sessions"))
     session.execute(text("DELETE FROM gate_activities"))
     session.execute(text("DELETE FROM parking_sessions"))
     session.execute(text("DELETE FROM reservations"))

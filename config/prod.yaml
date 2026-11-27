@@ -15,6 +15,11 @@ auth:
   argon2_time_cost: 2
   argon2_memory_kib: 19456
   argon2_parallelism: 1
+  jwt_expiration_minutes: 60
+  cookie_secure: true
+  cookie_samesite: Strict
+  login_max_attempts: 5
+  login_window_seconds: 900
 
 cors:
   origins: []

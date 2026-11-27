@@ -2,6 +2,7 @@
 
 from models.health import HealthStatus
 from models.orm import (
+    AuthSession,
     Facility,
     FacilitySettings,
     Floor,
@@ -15,6 +16,7 @@ from models.orm import (
 )
 
 __all__ = [
+    "AuthSession",
     "Facility",
     "FacilitySettings",
     "Floor",
