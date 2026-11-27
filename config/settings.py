@@ -50,7 +50,7 @@ def build_settings(environment: str | None = None) -> Settings:
         log_level=str(logging_cfg.get("level") or "INFO").upper(),
         log_format=str(
             logging_cfg.get("format")
-            or "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+            or "%(asctime)s | %(levelname)-8s | %(name)s | %(request_id)s | %(message)s"
         ),
         database_url=normalize_database_url(str(config.get("database_url") or "")),
         cors_origins=list(origins),

@@ -17,6 +17,7 @@ Stop:
 from __future__ import annotations
 
 import json
+import logging
 import random
 import sys
 import time
@@ -35,7 +36,11 @@ from sqlalchemy import create_engine, text
 from config.config_loader import load_project_env
 from config.database import normalize_database_url
 from config.facility import configured_facility_id
+from config.settings import get_settings
 from scripts.run_isolated_api import isolated_database_url
+from utils.logging_setup import setup_logging
+
+logger = logging.getLogger("parkify.simulator")
 
 load_project_env()
 FACILITY_ID = configured_facility_id()
@@ -132,11 +137,36 @@ def _request(method: str, path: str, payload: dict | None = None) -> tuple[int, 
         return exc.code, parsed
 
 
-def _error_message(payload: dict) -> str:
+def _error_code(payload: dict) -> str:
     error = payload.get("error")
-    if isinstance(error, dict) and error.get("message"):
-        return str(error["message"])
-    return "The API rejected the gate event."
+    if isinstance(error, dict) and error.get("code"):
+        return str(error["code"])
+    return "rejected"
+
+
+def summarize_tick(
+    clock: str,
+    outcome: str,
+    *,
+    spot: str | None = None,
+    status: int | None = None,
+    code: str | None = None,
+    charge: str | None = None,
+    duration: str | None = None,
+) -> str:
+    """One simulator log line. License plates are intentionally omitted."""
+    detail = f"clock={clock} outcome={outcome}"
+    if spot:
+        detail = f"{detail} spot={spot}"
+    if status is not None:
+        detail = f"{detail} status={status}"
+    if code:
+        detail = f"{detail} code={code}"
+    if charge:
+        detail = f"{detail} charge={charge}"
+    if duration:
+        detail = f"{detail} duration={duration}"
+    return detail
 
 
 def _own_sessions(items: list[dict]) -> list[dict]:
@@ -154,7 +184,7 @@ def run_once(rng: random.Random, engine) -> str:
     occupancy_status, occupancy = _request("GET", "/occupancy")
     session_status, sessions = _request("GET", "/sessions")
     if occupancy_status != 200 or session_status != 200:
-        return f"{clock} skipped because the facility could not be read"
+        return summarize_tick(clock, "skipped", status=occupancy_status if occupancy_status != 200 else session_status)
 
     available = [
         spot["code"]
@@ -164,7 +194,7 @@ def run_once(rng: random.Random, engine) -> str:
     owned = _own_sessions(sessions.get("items", []))
     action = choose_gate_action(available, [item["plate_number"] for item in owned], rng)
     if action is None:
-        return f"{clock} no legal entry or exit"
+        return summarize_tick(clock, "idle")
 
     kind, target = action
     if kind == "entry":
@@ -178,38 +208,49 @@ def run_once(rng: random.Random, engine) -> str:
             {"plate_number": plate, "spot_code": target},
         )
         if status not in (200, 201):
-            return f"{clock} entry {plate} at {target} rejected: {_error_message(payload)}"
-        return f"{clock} entry {plate} at {target}"
+            return summarize_tick(
+                clock,
+                "entry_rejected",
+                spot=target,
+                status=status,
+                code=_error_code(payload),
+            )
+        return summarize_tick(clock, "entry", spot=target, status=status)
 
     status, payload = _request("POST", "/exits", {"plate_number": target})
     if status != 200:
-        return f"{clock} exit {target} rejected: {_error_message(payload)}"
+        return summarize_tick(clock, "exit_rejected", status=status, code=_error_code(payload))
     quote = payload.get("quote") or {}
     amount = quote.get("amount")
     duration = quote.get("duration_label") or quote.get("duration")
-    detail = f" charge {amount}" if amount else ""
-    if duration:
-        detail = f"{detail} for {duration}"
-    return f"{clock} exit {target}{detail}"
+    return summarize_tick(
+        clock,
+        "exit",
+        status=status,
+        charge=None if amount is None else str(amount),
+        duration=None if duration is None else str(duration),
+    )
 
 
 def main() -> None:
     # Touch dotenv keys only to fail fast with the same guard as the API.
     dotenv_values(ROOT / ".env")
+    setup_logging(get_settings())
     database_url = isolated_database_url()
     engine = create_engine(normalize_database_url(database_url))
     rng = random.Random()
-    print(
-        "Live simulator posting to http://127.0.0.1:5002 every 5s; "
-        "facility clock moves 5 minutes per event",
-        flush=True,
+    logger.info(
+        "simulator started facility=%s interval_seconds=%s clock_step_minutes=%s",
+        FACILITY_ID,
+        EVENT_INTERVAL_SECONDS,
+        int(CLOCK_STEP.total_seconds() // 60),
     )
     try:
         while True:
             try:
-                print(run_once(rng, engine), flush=True)
+                logger.info(run_once(rng, engine))
             except Exception as exc:
-                print(f"tick failed: {type(exc).__name__}", flush=True)
+                logger.error("simulator tick failed error=%s", type(exc).__name__)
             time.sleep(EVENT_INTERVAL_SECONDS)
     finally:
         engine.dispose()

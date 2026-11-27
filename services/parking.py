@@ -107,7 +107,9 @@ class ParkingService:
                 raise NotFoundError("Parking spot was not found in this facility.")
             return self._pricing.quote(spot, settings, started_at, ended_at)
 
-        return run_in_transaction(self._uow_factory, work)
+        quote = run_in_transaction(self._uow_factory, work)
+        logger.debug("quote_stay facility=%s spot=%s", facility_id, spot_code.strip().upper())
+        return quote
 
 
 def load_occupancy(repos, clock: Clock, facility_id: str, at: datetime | None, pricing: PricingService):

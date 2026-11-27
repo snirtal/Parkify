@@ -54,6 +54,18 @@ Browser: http://127.0.0.1:5174/
 
 The live stack uses the isolated Neon testing branch. Existing rows stay in place. Production on ports 5001 and 5173 is unchanged.
 
+## Logs
+
+The API and the live simulator write to standard output. `LOG_LEVEL` selects the level (`DEBUG`, `INFO`, `WARNING`, `ERROR`). Each API response includes `X-Request-ID`, and the same id is written on that request's log lines. Logs omit license plates, request bodies, passwords, and database URLs.
+
+```bash
+docker compose logs -f backend
+tail -f .live/api.log
+tail -f .live/simulator.log
+```
+
+`docker compose logs` shows the production-local API. The `.live` files show the isolated API and the simulator started with `make start`.
+
 ## API Examples
 
 ```bash

@@ -88,7 +88,7 @@ def register_error_handlers(app: Flask) -> None:
 
     @app.errorhandler(Exception)
     def handle_unexpected_error(exc: Exception):
-        logger.exception("Unhandled exception: %s", exc)
+        logger.exception("Unhandled exception (%s)", type(exc).__name__)
         return (
             jsonify(
                 error_payload(
