@@ -72,6 +72,7 @@ def apply_env_overrides(raw: dict[str, Any]) -> dict[str, Any]:
     app = dict(raw.get("app") or {})
     logging_cfg = dict(raw.get("logging") or {})
     cors = dict(raw.get("cors") or {})
+    auth = dict(raw.get("auth") or {})
 
     if secret := os.getenv("SECRET_KEY"):
         app["secret_key"] = secret
@@ -85,11 +86,14 @@ def apply_env_overrides(raw: dict[str, Any]) -> dict[str, Any]:
         logging_cfg["level"] = log_level.upper()
     if cors_origins := os.getenv("CORS_ORIGINS"):
         cors["origins"] = _parse_origins(cors_origins)
+    if password_min_length := os.getenv("PASSWORD_MIN_LENGTH"):
+        auth["password_min_length"] = password_min_length
 
     return {
         "app": app,
         "logging": logging_cfg,
         "cors": cors,
+        "auth": auth,
         "database_url": os.getenv("DATABASE_URL", "").strip(),
         "raw": raw,
     }

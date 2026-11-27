@@ -10,6 +10,7 @@ from models.orm import (
     ParkingSpot,
     ParkingZone,
     Reservation,
+    User,
     Vehicle,
 )
 
@@ -23,5 +24,6 @@ __all__ = [
     "ParkingSpot",
     "ParkingZone",
     "Reservation",
+    "User",
     "Vehicle",
 ]

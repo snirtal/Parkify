@@ -10,5 +10,11 @@ logging:
   level: INFO
   format: "%(asctime)s | %(levelname)-8s | %(name)s | %(request_id)s | %(message)s"
 
+auth:
+  password_min_length: 12
+  argon2_time_cost: 2
+  argon2_memory_kib: 19456
+  argon2_parallelism: 1
+
 cors:
   origins: []

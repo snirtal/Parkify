@@ -287,3 +287,36 @@ class GateActivity(Base, TimestampMixin):
     spot: Mapped[ParkingSpot] = relationship(back_populates="gate_activities")
     vehicle: Mapped[Vehicle] = relationship(back_populates="gate_activities")
     reservation: Mapped[Reservation | None] = relationship(back_populates="gate_activities")
+
+
+class User(Base):
+    """An operator account. Public registration is not available.
+
+    role is stored for later authorization. admin will have full access.
+    employee will view occupancy and approve reservations, without financial
+    or administrative access. Those checks are not enforced yet.
+    """
+
+    __tablename__ = "users"
+    __table_args__ = (
+        UniqueConstraint("email", name="uq_users_email"),
+        CheckConstraint("role IN ('admin', 'employee')", name="ck_users_role"),
+        CheckConstraint("email = lower(email)", name="ck_users_email_normalized"),
+        CheckConstraint("char_length(full_name) >= 2", name="ck_users_full_name"),
+        CheckConstraint("char_length(password_hash) >= 20", name="ck_users_password_hash"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    email: Mapped[str] = mapped_column(String(254), nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    full_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    role: Mapped[str] = mapped_column(String(16), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    def __repr__(self) -> str:
+        return f"User(id={self.id!r}, role={self.role!r}, is_active={self.is_active!r})"

@@ -271,3 +271,15 @@ def reservation_view(
         starts_at=reservation.starts_at,
         ends_at=reservation.ends_at,
     )
+
+
+@dataclass(frozen=True)
+class UserAccount:
+    """An operator account without the password hash."""
+
+    id: str
+    email: str
+    full_name: str
+    role: str
+    is_active: bool
+    created_at: datetime

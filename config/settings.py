@@ -23,6 +23,10 @@ class Settings:
     log_format: str
     database_url: str
     cors_origins: list[str] = field(default_factory=list)
+    password_min_length: int = 12
+    argon2_time_cost: int = 2
+    argon2_memory_kib: int = 19456
+    argon2_parallelism: int = 1
 
     @property
     def is_production(self) -> bool:
@@ -40,6 +44,7 @@ def build_settings(environment: str | None = None) -> Settings:
     if isinstance(origins, str):
         origins = [item.strip() for item in origins.split(",") if item.strip()]
 
+    auth = config.get("auth") or {}
     return Settings(
         app_name=str(app.get("name") or "Parkify"),
         environment=str(config.get("environment") or "development"),
@@ -54,7 +59,43 @@ def build_settings(environment: str | None = None) -> Settings:
         ),
         database_url=normalize_database_url(str(config.get("database_url") or "")),
         cors_origins=list(origins),
+        password_min_length=_bounded_int(
+            auth.get("password_min_length", 12),
+            "password_min_length",
+            minimum=8,
+            maximum=128,
+        ),
+        argon2_time_cost=_bounded_int(
+            auth.get("argon2_time_cost", 2),
+            "argon2_time_cost",
+            minimum=1,
+            maximum=10,
+        ),
+        argon2_memory_kib=_bounded_int(
+            auth.get("argon2_memory_kib", 19456),
+            "argon2_memory_kib",
+            minimum=8192,
+            maximum=1_048_576,
+        ),
+        argon2_parallelism=_bounded_int(
+            auth.get("argon2_parallelism", 1),
+            "argon2_parallelism",
+            minimum=1,
+            maximum=8,
+        ),
     )
+
+
+def _bounded_int(value: object, label: str, *, minimum: int, maximum: int) -> int:
+    if isinstance(value, bool):
+        raise ValueError(f"{label} must be a whole number.")
+    try:
+        parsed = int(str(value))
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{label} must be a whole number.") from exc
+    if not minimum <= parsed <= maximum:
+        raise ValueError(f"{label} must be between {minimum} and {maximum}.")
+    return parsed
 
 
 @lru_cache(maxsize=4)
