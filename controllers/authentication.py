@@ -1,7 +1,7 @@
-"""Cookie session and CSRF checks for later protected routes.
+"""Cookie session and CSRF checks.
 
-These helpers are not registered globally. Existing facility routes stay open
-so the simulator and the current API keep working.
+These helpers are not a global before_request hook. Business routes call
+permission_required, which calls require_account. Health and login stay public.
 """
 
 from __future__ import annotations

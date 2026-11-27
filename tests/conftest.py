@@ -88,3 +88,13 @@ def db_session(migrated_engine):
         session.close()
         transaction.rollback()
         connection.close()
+
+
+@pytest.fixture()
+def api_client(db_session):
+    """An admin signed in on the rolled-back isolated database."""
+    from tests.http_auth import operator_client
+
+    client = operator_client(db_session, role="admin", email="admin@parkify.test")
+    yield client
+    get_settings.cache_clear()

@@ -7,7 +7,7 @@ export interface ApiSpot {
   zone_name: string
   bay_class: 'Standard' | 'EV Fast 150kW' | 'VIP Priority' | 'Accessible'
   status: 'available' | 'occupied' | 'reserved' | 'unavailable'
-  hourly_rate: string
+  hourly_rate?: string
   maintenance_reason: string | null
   plate_number: string | null
   session_id: string | null
@@ -51,6 +51,7 @@ export interface ApiDashboard {
   above_high_occupancy_threshold: boolean
   reservation_overstay_alert_armed: boolean
   space_fault_alert_armed: boolean
+  recent_gate_activity?: ApiGateEvent[]
 }
 
 export interface ApiReservation {

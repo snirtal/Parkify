@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { NAV_ITEMS, type NavItem } from '../../config/navigation'
-import { useSignOut } from '../../auth/useAuth'
+import { useAuth, useSignOut } from '../../auth/useAuth'
+import { can } from '../../auth/permissions'
 import { useParkingState } from '../../context/useParkingState'
 import { BrandLogoIcon, CloseIcon, NavIcon } from '../icons/AppIcons'
 import './Sidebar.css'
@@ -19,7 +20,9 @@ export function Sidebar({
   onCloseMobile,
 }: SidebarProps) {
   const { settings, dataset } = useParkingState()
+  const { user } = useAuth()
   const { signOut, signingOut, error } = useSignOut()
+  const visible = items.filter((item) => can(user?.role, item.permission))
 
   return (
     <aside
@@ -47,7 +50,7 @@ export function Sidebar({
       </div>
 
       <nav className="mobile-drawer__nav">
-        {items.map((item) => (
+        {visible.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from flask import Blueprint, jsonify
 
+from controllers.authorization import permission_required
 from controllers.dependencies import current_services
 from controllers.parsing import (
     identifier,
@@ -14,6 +15,7 @@ from controllers.parsing import (
     optional_whole_number,
 )
 from controllers.serialization import dump
+from services.permissions import SETTINGS_MANAGE, SETTINGS_READ
 from services.results import FacilitySettingsUpdate
 from utils.errors import AppError
 
@@ -34,6 +36,7 @@ _FIELDS = (
 
 
 @settings_bp.get("/settings")
+@permission_required(SETTINGS_READ)
 def get_settings(facility_id: str):
     facility_id = identifier(facility_id, "facility_id")
     settings = current_services().settings.get_settings(facility_id)
@@ -41,6 +44,7 @@ def get_settings(facility_id: str):
 
 
 @settings_bp.patch("/settings")
+@permission_required(SETTINGS_MANAGE)
 def update_settings(facility_id: str):
     facility_id = identifier(facility_id, "facility_id")
     payload = json_object()

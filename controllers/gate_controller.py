@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from flask import Blueprint, jsonify
 
+from controllers.authorization import permission_required
 from controllers.dependencies import current_services
 from controllers.parsing import (
     identifier,
@@ -21,12 +22,14 @@ from controllers.parsing import (
     required_text,
 )
 from controllers.serialization import dump
+from services.permissions import GATE_OPERATE, GATE_READ
 from utils.errors import AppError
 
 gate_bp = Blueprint("gate", __name__, url_prefix="/api/facilities/<facility_id>")
 
 
 @gate_bp.post("/entries")
+@permission_required(GATE_OPERATE)
 def record_entry(facility_id: str):
     facility_id = identifier(facility_id, "facility_id")
     payload = json_object()
@@ -47,6 +50,7 @@ def record_entry(facility_id: str):
 
 
 @gate_bp.post("/exits")
+@permission_required(GATE_OPERATE)
 def record_exit(facility_id: str):
     facility_id = identifier(facility_id, "facility_id")
     payload = json_object()
@@ -71,6 +75,7 @@ def record_exit(facility_id: str):
 
 
 @gate_bp.get("/gate-activity")
+@permission_required(GATE_READ)
 def list_gate_activity(facility_id: str):
     facility_id = identifier(facility_id, "facility_id")
     spot_code = query_text("spot_code", maximum=16)

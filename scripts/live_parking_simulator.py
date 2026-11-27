@@ -12,6 +12,10 @@ Start, from the repository root, after the isolated API is listening:
 Stop:
 
     pkill -f scripts/live_parking_simulator.py
+
+Business endpoints now require an operator session. This simulator does not
+sign in and does not contain credentials. Occupancy reads and gate posts
+receive 401 until a later phase adds a simulator identity.
 """
 
 from __future__ import annotations

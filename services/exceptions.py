@@ -71,6 +71,15 @@ class CsrfError(DomainError):
         super().__init__(message, code=code)
 
 
+class AuthorizationError(DomainError):
+    """The signed-in operator does not have permission for this action."""
+
+    status_code = 403
+
+    def __init__(self, message: str = "You do not have access to this action.", *, code: str = "forbidden") -> None:
+        super().__init__(message, code=code)
+
+
 class RateLimitError(DomainError):
     """Too many attempts in the configured window."""
 

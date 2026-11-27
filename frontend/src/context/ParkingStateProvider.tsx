@@ -1,5 +1,7 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { isAbortError } from '../api/client'
+import { permissionsForRole } from '../auth/permissions'
+import { useAuth } from '../auth/useAuth'
 import {
   cancelReservation as cancelReservationRequest,
   commitChange,
@@ -62,6 +64,8 @@ export function ParkingStateProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<LoadStatus>('loading')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const { user } = useAuth()
+  const granted = useMemo(() => permissionsForRole(user?.role), [user?.role])
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
@@ -75,7 +79,7 @@ export function ParkingStateProvider({ children }: { children: ReactNode }) {
       inFlight = true
       const controller = new AbortController()
       active = controller
-      loadFacility(controller.signal)
+      loadFacility(controller.signal, granted)
         .then((next) => {
           if (cancelled) return
           loaded = true
@@ -101,7 +105,7 @@ export function ParkingStateProvider({ children }: { children: ReactNode }) {
       active?.abort()
       window.clearInterval(timer)
     }
-  }, [reloadKey])
+  }, [reloadKey, granted])
 
   const apply = async (work: () => Promise<unknown>): Promise<ActionResult> => {
     setSubmitting(true)

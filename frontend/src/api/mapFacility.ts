@@ -93,7 +93,7 @@ function mapSpot(
     slotIndex: placement.slotIndex,
     status: spot.status,
     bayClass: spot.bay_class,
-    ratePerHour: `$${spot.hourly_rate}/h`,
+    ratePerHour: spot.hourly_rate ? `$${spot.hourly_rate}/h` : '',
     sensorNote: sensorNote(spot),
   }
   if (spot.maintenance_reason) bay.maintenanceReason = spot.maintenance_reason

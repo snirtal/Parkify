@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError } from './client'
+import { ApiError, apiRequest } from './client'
 import { CSRF_HEADER, fetchCurrentUser, login, logout, readCookie } from './authApi'
 
 const user = {
@@ -89,6 +89,20 @@ describe('auth API', () => {
       code: 'invalid_credentials',
       message: 'The email or password is incorrect.',
     })
+  })
+})
+
+describe('csrf header', () => {
+  it('sends the readable cookie on a change and not the session token', async () => {
+    vi.stubGlobal('document', { cookie: 'parkify_session=hidden; parkify_csrf=csrf-value' })
+    const fetchMock = vi.fn(async () => json({ ok: true }))
+    vi.stubGlobal('fetch', fetchMock)
+    await apiRequest('/api/facilities/facility-skyline/entries', { method: 'POST', body: { spot_code: 'P-210' } })
+    const init = fetchMock.mock.calls[0] as unknown as [string, { headers: Record<string, string>; body: string }]
+    const request = init[1]
+    expect(request.headers['X-CSRF-Token']).toBe('csrf-value')
+    expect(request.body).not.toContain('hidden')
+    expect(JSON.stringify(request.headers)).not.toContain('hidden')
   })
 })
 

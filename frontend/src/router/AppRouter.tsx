@@ -1,10 +1,13 @@
+import type { ReactNode } from 'react'
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom'
-import { ParkingStateProvider } from '../context/ParkingStateProvider'
-import { useAuth } from '../auth/useAuth'
+import { canVisit } from '../auth/permissions'
 import { redirectForAuth } from '../auth/session'
+import { useAuth } from '../auth/useAuth'
 import { MainLayout } from '../components/layout'
+import { ParkingStateProvider } from '../context/ParkingStateProvider'
 import { AnalyticsPage } from '../pages/AnalyticsPage'
 import { DashboardPage } from '../pages/DashboardPage'
+import { ForbiddenPage } from '../pages/ForbiddenPage'
 import { LoginPage, SessionGate } from '../pages/LoginPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { ParkingMapPage } from '../pages/ParkingMapPage'
@@ -19,12 +22,12 @@ export function AppRouter() {
         <Route path="/login" element={<LoginRoute />} />
         <Route element={<RequireAuth />}>
           <Route element={<MainLayout />}>
-            <Route index element={<DashboardPage />} />
-            <Route path="parking-map" element={<ParkingMapPage />} />
-            <Route path="sessions" element={<SessionsPage />} />
-            <Route path="reservations" element={<ReservationsPage />} />
-            <Route path="analytics" element={<AnalyticsPage />} />
-            <Route path="settings" element={<SettingsPage />} />
+            <Route index element={<Permit path="/"><DashboardPage /></Permit>} />
+            <Route path="parking-map" element={<Permit path="/parking-map"><ParkingMapPage /></Permit>} />
+            <Route path="sessions" element={<Permit path="/sessions"><SessionsPage /></Permit>} />
+            <Route path="reservations" element={<Permit path="/reservations"><ReservationsPage /></Permit>} />
+            <Route path="analytics" element={<Permit path="/analytics"><AnalyticsPage /></Permit>} />
+            <Route path="settings" element={<Permit path="/settings"><SettingsPage /></Permit>} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Route>
@@ -39,6 +42,12 @@ function LoginRoute() {
   const redirect = redirectForAuth('/login', auth.status)
   if (redirect) return <Navigate to={redirect} replace />
   return <LoginPage notice={auth.notice} onSubmit={auth.login} />
+}
+
+function Permit({ path, children }: { path: string; children: ReactNode }) {
+  const { user } = useAuth()
+  if (!canVisit(user?.role, path)) return <ForbiddenPage />
+  return children
 }
 
 function RequireAuth() {

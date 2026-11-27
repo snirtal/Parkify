@@ -4,14 +4,17 @@ from __future__ import annotations
 
 from flask import Blueprint, jsonify
 
+from controllers.authorization import permission_required
 from controllers.dependencies import current_services
 from controllers.parsing import identifier, json_object, required_text, required_timestamp
 from controllers.serialization import dump
+from services.permissions import PRICING_QUOTE
 
 pricing_bp = Blueprint("pricing", __name__, url_prefix="/api/facilities/<facility_id>")
 
 
 @pricing_bp.post("/quotes")
+@permission_required(PRICING_QUOTE)
 def quote_stay(facility_id: str):
     facility_id = identifier(facility_id, "facility_id")
     payload = json_object()

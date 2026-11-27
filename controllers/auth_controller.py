@@ -8,11 +8,8 @@ from __future__ import annotations
 
 from flask import Blueprint, jsonify, make_response, request
 
-from controllers.authentication import (
-    apply_login_cookies,
-    clear_auth_cookies,
-    require_account,
-)
+from controllers.authentication import apply_login_cookies, clear_auth_cookies
+from controllers.authorization import current_account, permission_required, public_endpoint
 from controllers.dependencies import current_services
 from controllers.parsing import json_object, required_text
 from services.results import UserAccount
@@ -21,6 +18,7 @@ auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
 
 @auth_bp.post("/login")
+@public_endpoint
 def login():
     payload = json_object()
     email = required_text(payload, "email", maximum=254)
@@ -36,15 +34,16 @@ def login():
 
 
 @auth_bp.get("/me")
+@permission_required()
 def me():
-    account = require_account()
+    account = current_account()
     return jsonify({"user": _public_user(account)}), 200
 
 
 @auth_bp.post("/logout")
+@permission_required()
 def logout():
     token = request.cookies.get("parkify_session", "")
-    require_account()
     current_services().auth.logout(token)
     response = make_response("", 204)
     clear_auth_cookies(response)

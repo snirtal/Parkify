@@ -1,8 +1,8 @@
 """Create operator accounts. There is no public registration.
 
-Roles are stored for later authorization and are not enforced yet.
-admin will have full access. employee will view occupancy and approve
-reservations, without financial or administrative access.
+admin has every permission. employee can read occupancy and will approve
+reservation requests when that workflow exists. Employees do not receive
+financial or administrative permissions.
 """
 
 from __future__ import annotations

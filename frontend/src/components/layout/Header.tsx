@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { NAV_ITEMS } from '../../config/navigation'
-import { useSignOut } from '../../auth/useAuth'
+import { can, SETTINGS_READ } from '../../auth/permissions'
+import { useAuth, useSignOut } from '../../auth/useAuth'
 import { useParkingState } from '../../context/useParkingState'
 import { BellIcon, BrandLogoIcon, GearIcon, MenuIcon, PinIcon } from '../icons/AppIcons'
 import './Header.css'
@@ -20,8 +21,11 @@ export function Header({
   onOpenMobileMenu,
 }: HeaderProps) {
   const { settings, dataset, sessions } = useParkingState()
+  const { user } = useAuth()
   const { signOut, signingOut, error: signOutError } = useSignOut()
   const [showAlerts, setShowAlerts] = useState(false)
+  const tabs = PRIMARY_TABS.filter((item) => can(user?.role, item.permission))
+  const showSettings = can(user?.role, SETTINGS_READ)
 
   const alerts: { id: string; label: string; body: string }[] = []
   const offlineBays = dataset.bays.filter((bay) => bay.status === 'unavailable')
@@ -75,7 +79,7 @@ export function Header({
       </div>
 
       <nav className="top-nav__segmented" aria-label="Main navigation">
-        {PRIMARY_TABS.map((item) => (
+        {tabs.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
@@ -132,16 +136,18 @@ export function Header({
           )}
         </div>
 
-        <NavLink
-          to="/settings"
-          className={({ isActive }) =>
-            `top-nav__icon-btn${isActive ? ' top-nav__icon-btn--route-active' : ''}`
-          }
-          aria-label="System Settings"
-          title="Settings"
-        >
-          <GearIcon />
-        </NavLink>
+        {showSettings ? (
+          <NavLink
+            to="/settings"
+            className={({ isActive }) =>
+              `top-nav__icon-btn${isActive ? ' top-nav__icon-btn--route-active' : ''}`
+            }
+            aria-label="System Settings"
+            title="Settings"
+          >
+            <GearIcon />
+          </NavLink>
+        ) : null}
 
         <button
           type="button"

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from flask import Blueprint, jsonify
 
+from controllers.authorization import permission_required
 from controllers.dependencies import current_services
 from controllers.parsing import (
     identifier,
@@ -17,6 +18,7 @@ from controllers.parsing import (
     required_timestamp,
 )
 from controllers.serialization import dump
+from services.permissions import RESERVATIONS_MANAGE, RESERVATIONS_READ
 from utils.errors import AppError
 
 RESERVATION_STATUSES = ("Active", "Scheduled", "Completed", "Cancelled")
@@ -29,6 +31,7 @@ reservations_bp = Blueprint(
 
 
 @reservations_bp.get("/reservations")
+@permission_required(RESERVATIONS_READ)
 def list_reservations(facility_id: str):
     facility_id = identifier(facility_id, "facility_id")
     status = query_choice("status", RESERVATION_STATUSES)
@@ -48,6 +51,7 @@ def list_reservations(facility_id: str):
 
 
 @reservations_bp.post("/reservations")
+@permission_required(RESERVATIONS_MANAGE)
 def create_reservation(facility_id: str):
     facility_id = identifier(facility_id, "facility_id")
     payload = json_object()
@@ -68,6 +72,7 @@ def create_reservation(facility_id: str):
 
 
 @reservations_bp.post("/reservations/lifecycle")
+@permission_required(RESERVATIONS_MANAGE)
 def refresh_reservation_lifecycle(facility_id: str):
     facility_id = identifier(facility_id, "facility_id")
     refreshed = current_services().reservations.refresh_lifecycle(facility_id)
@@ -75,6 +80,7 @@ def refresh_reservation_lifecycle(facility_id: str):
 
 
 @reservations_bp.get("/reservations/<reservation_id>")
+@permission_required(RESERVATIONS_READ)
 def get_reservation(facility_id: str, reservation_id: str):
     facility_id = identifier(facility_id, "facility_id")
     reservation_id = identifier(reservation_id, "reservation_id")
@@ -83,6 +89,7 @@ def get_reservation(facility_id: str, reservation_id: str):
 
 
 @reservations_bp.patch("/reservations/<reservation_id>")
+@permission_required(RESERVATIONS_MANAGE)
 def update_reservation(facility_id: str, reservation_id: str):
     facility_id = identifier(facility_id, "facility_id")
     reservation_id = identifier(reservation_id, "reservation_id")
@@ -114,6 +121,7 @@ def update_reservation(facility_id: str, reservation_id: str):
 
 
 @reservations_bp.post("/reservations/<reservation_id>/cancellation")
+@permission_required(RESERVATIONS_MANAGE)
 def cancel_reservation(facility_id: str, reservation_id: str):
     facility_id = identifier(facility_id, "facility_id")
     reservation_id = identifier(reservation_id, "reservation_id")
