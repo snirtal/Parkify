@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { NAV_ITEMS } from '../../config/navigation'
+import { useSignOut } from '../../auth/useAuth'
 import { useParkingState } from '../../context/useParkingState'
 import { BellIcon, BrandLogoIcon, GearIcon, MenuIcon, PinIcon } from '../icons/AppIcons'
 import './Header.css'
@@ -19,6 +20,7 @@ export function Header({
   onOpenMobileMenu,
 }: HeaderProps) {
   const { settings, dataset, sessions } = useParkingState()
+  const { signOut, signingOut, error: signOutError } = useSignOut()
   const [showAlerts, setShowAlerts] = useState(false)
 
   const alerts: { id: string; label: string; body: string }[] = []
@@ -140,6 +142,20 @@ export function Header({
         >
           <GearIcon />
         </NavLink>
+
+        <button
+          type="button"
+          className="top-nav__logout"
+          onClick={() => void signOut()}
+          disabled={signingOut}
+        >
+          {signingOut ? 'Signing out…' : 'Log out'}
+        </button>
+        {signOutError ? (
+          <p className="top-nav__logout-error" role="alert">
+            {signOutError}
+          </p>
+        ) : null}
       </div>
     </header>
   )

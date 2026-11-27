@@ -1,11 +1,11 @@
-import { ParkingStateProvider } from './context/ParkingStateProvider'
+import { AuthProvider } from './auth/AuthProvider'
 import { AppRouter } from './router/AppRouter'
 
 function App() {
   return (
-    <ParkingStateProvider>
+    <AuthProvider>
       <AppRouter />
-    </ParkingStateProvider>
+    </AuthProvider>
   )
 }
 

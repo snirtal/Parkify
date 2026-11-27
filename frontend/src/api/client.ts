@@ -16,7 +16,13 @@ export function isAbortError(error: unknown): boolean {
 
 export async function apiRequest<T>(
   path: string,
-  init: { method?: string; body?: unknown; signal?: AbortSignal } = {},
+  init: {
+    method?: string
+    body?: unknown
+    signal?: AbortSignal
+    headers?: Record<string, string>
+    credentials?: RequestCredentials
+  } = {},
 ): Promise<T> {
   let response: Response
   try {
@@ -25,9 +31,11 @@ export async function apiRequest<T>(
       headers: {
         Accept: 'application/json',
         ...(init.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        ...init.headers,
       },
       body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
       signal: init.signal,
+      ...(init.credentials ? { credentials: init.credentials } : {}),
     })
   } catch (error) {
     if (isAbortError(error)) throw error

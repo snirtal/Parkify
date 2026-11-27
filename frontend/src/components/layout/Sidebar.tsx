@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { NAV_ITEMS, type NavItem } from '../../config/navigation'
+import { useSignOut } from '../../auth/useAuth'
 import { useParkingState } from '../../context/useParkingState'
 import { BrandLogoIcon, CloseIcon, NavIcon } from '../icons/AppIcons'
 import './Sidebar.css'
@@ -18,6 +19,7 @@ export function Sidebar({
   onCloseMobile,
 }: SidebarProps) {
   const { settings, dataset } = useParkingState()
+  const { signOut, signingOut, error } = useSignOut()
 
   return (
     <aside
@@ -63,6 +65,22 @@ export function Sidebar({
           </NavLink>
         ))}
       </nav>
+
+      <div className="mobile-drawer__session">
+        <button
+          type="button"
+          className="mobile-drawer__logout"
+          onClick={() => void signOut()}
+          disabled={signingOut}
+        >
+          {signingOut ? 'Signing out…' : 'Log out'}
+        </button>
+        {error ? (
+          <p className="mobile-drawer__logout-error" role="alert">
+            {error}
+          </p>
+        ) : null}
+      </div>
 
       <div className="mobile-drawer__footer">
         <span className="mobile-drawer__dot" aria-hidden="true" />
