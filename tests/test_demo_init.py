@@ -60,6 +60,48 @@ def test_demo_users_are_created_once_and_existing_passwords_stay():
     assert len(created_emails) == 3
 
 
+def test_demo_settings_allow_local_http_and_refuse_a_remote_database(monkeypatch):
+    from config.settings import get_settings
+
+    monkeypatch.setenv("PARKIFY_ENV", "demo")
+    monkeypatch.setenv("DATABASE_URL", LOCAL)
+    monkeypatch.setenv("JWT_SECRET", "parkify-demo-jwt-secret-not-for-production")
+    monkeypatch.setenv("COOKIE_SECURE", "false")
+    monkeypatch.setenv("SESSION_COOKIE_NAME", "parkify_demo_session")
+    monkeypatch.setenv("CSRF_COOKIE_NAME", "parkify_demo_csrf")
+    get_settings.cache_clear()
+    try:
+        settings = get_settings()
+        assert settings.environment == "demo"
+        assert settings.cookie_secure is False
+        assert settings.session_cookie == "parkify_demo_session"
+        assert settings.csrf_cookie == "parkify_demo_csrf"
+        monkeypatch.setenv(
+            "DATABASE_URL",
+            "postgresql://parkify:parkify@ep-example.neon.tech/parkify?sslmode=require",
+        )
+        get_settings.cache_clear()
+        with pytest.raises(SystemExit, match="not the local demo"):
+            get_settings()
+    finally:
+        get_settings.cache_clear()
+
+
+def test_production_still_requires_secure_cookies(monkeypatch):
+    from config.settings import get_settings
+
+    monkeypatch.setenv("PARKIFY_ENV", "production")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://parkify:parkify@db.example/parkify?sslmode=require")
+    monkeypatch.setenv("JWT_SECRET", "parkify-demo-jwt-secret-not-for-production")
+    monkeypatch.setenv("COOKIE_SECURE", "false")
+    get_settings.cache_clear()
+    try:
+        with pytest.raises(ValueError, match="Secure"):
+            get_settings()
+    finally:
+        get_settings.cache_clear()
+
+
 def test_documented_demo_passwords_meet_the_policy():
     assert len(init_demo.DEMO_ACCOUNTS) == 3
     assert {account.role for account in init_demo.DEMO_ACCOUNTS} == {"admin", "employee", "simulator"}

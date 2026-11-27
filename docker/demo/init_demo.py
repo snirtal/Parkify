@@ -13,11 +13,12 @@ import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import parse_qsl, urlsplit
 
 APP_ROOT = Path("/app")
 if APP_ROOT.is_dir() and str(APP_ROOT) not in sys.path:
     sys.path.insert(0, str(APP_ROOT))
+
+from config.demo_guard import assert_demo_database
 
 logger = logging.getLogger("parkify.demo")
 
@@ -31,9 +32,7 @@ def configure_logging() -> None:
     logging.basicConfig(level=logging.INFO, handlers=[handler], force=True)
     logging.getLogger("parkify").setLevel(logging.INFO)
 
-DEMO_HOST = "postgres"
-DEMO_DATABASE = "parkify"
-DEMO_USER = "parkify"
+
 FACILITY_ID = "facility-skyline"
 
 
@@ -50,25 +49,6 @@ DEMO_ACCOUNTS = (
     DemoAccount("employee@parkify.demo", "Demo Employee", "Demo-Employee-Pass1", "employee"),
     DemoAccount("simulator@parkify.demo", "Demo Simulator", "Demo-Simulator-Pass1", "simulator"),
 )
-
-
-def assert_demo_database(url: str) -> None:
-    """Allow only the local Compose database with SSL disabled."""
-    if not isinstance(url, str) or not url.strip():
-        raise SystemExit("Demo init refuses to run: DATABASE_URL is not set.")
-    if "neon.tech" in url.lower():
-        raise SystemExit("Demo init refuses to run: this database is not the local demo.")
-    parts = urlsplit(url.strip())
-    host = (parts.hostname or "").lower()
-    name = parts.path.strip("/")
-    query = dict(parse_qsl(parts.query, keep_blank_values=True))
-    if (
-        host != DEMO_HOST
-        or name != DEMO_DATABASE
-        or (parts.username or "") != DEMO_USER
-        or query.get("sslmode") != "disable"
-    ):
-        raise SystemExit("Demo init refuses to run: this database is not the local demo.")
 
 
 def should_seed(facility_exists: bool) -> bool:

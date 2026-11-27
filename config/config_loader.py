@@ -17,11 +17,13 @@ ENV_ALIASES = {
     "development": "development",
     "prod": "production",
     "production": "production",
+    "demo": "demo",
 }
 
 ENV_TO_FILE = {
     "development": "dev.yaml",
     "production": "prod.yaml",
+    "demo": "prod.yaml",
 }
 
 
@@ -97,6 +99,10 @@ def apply_env_overrides(raw: dict[str, Any]) -> dict[str, Any]:
         auth["cookie_secure"] = cookie_secure
     if cookie_samesite := os.getenv("COOKIE_SAMESITE"):
         auth["cookie_samesite"] = cookie_samesite
+    if session_cookie := os.getenv("SESSION_COOKIE_NAME"):
+        auth["session_cookie"] = session_cookie
+    if csrf_cookie := os.getenv("CSRF_COOKIE_NAME"):
+        auth["csrf_cookie"] = csrf_cookie
     if login_max_attempts := os.getenv("LOGIN_MAX_ATTEMPTS"):
         auth["login_max_attempts"] = login_max_attempts
     if login_window := os.getenv("LOGIN_WINDOW_SECONDS"):

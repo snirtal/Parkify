@@ -66,7 +66,11 @@ services:
       DATABASE_URL: postgresql://parkify:parkify@postgres:5432/parkify?sslmode=disable
       SECRET_KEY: parkify-demo-flask-secret
       JWT_SECRET: parkify-demo-jwt-secret-not-for-production
-      PARKIFY_ENV: production
+      PARKIFY_ENV: demo
+      COOKIE_SECURE: "false"
+      COOKIE_SAMESITE: Lax
+      SESSION_COOKIE_NAME: parkify_demo_session
+      CSRF_COOKIE_NAME: parkify_demo_csrf
       HOST: 0.0.0.0
       PORT: "5001"
       DEBUG: "false"
@@ -100,6 +104,8 @@ services:
     build:
       context: .
       dockerfile: docker/frontend/Dockerfile
+      args:
+        VITE_CSRF_COOKIE: parkify_demo_csrf
     image: parkify-demo-frontend
     container_name: parkify-demo-frontend
     depends_on:
@@ -117,6 +123,42 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
+
+  simulator:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+      target: runtime
+    image: parkify-demo-backend
+    container_name: parkify-demo-simulator
+    working_dir: /app
+    entrypoint: ["python", "/app/scripts/live_parking_simulator.py"]
+    environment:
+      DATABASE_URL: postgresql://parkify:parkify@postgres:5432/parkify?sslmode=disable
+      PARKIFY_ENV: demo
+      COOKIE_SECURE: "false"
+      COOKIE_SAMESITE: Lax
+      SESSION_COOKIE_NAME: parkify_demo_session
+      CSRF_COOKIE_NAME: parkify_demo_csrf
+      PARKIFY_API_BASE: http://backend:5001
+      PARKIFY_CSRF_COOKIE: parkify_demo_csrf
+      JWT_SECRET: parkify-demo-jwt-secret-not-for-production
+      SECRET_KEY: parkify-demo-flask-secret
+      SIMULATOR_EMAIL: simulator@parkify.demo
+      SIMULATOR_PASSWORD: Demo-Simulator-Pass1
+      SIMULATOR_REQUEST_EVERY_TICKS: "4"
+      PYTHONPATH: /app
+    volumes:
+      - ./scripts:/app/scripts:ro
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      backend:
+        condition: service_healthy
+    networks:
+      - parkify-demo
+    init: true
+    restart: unless-stopped
 
 networks:
   parkify-demo:

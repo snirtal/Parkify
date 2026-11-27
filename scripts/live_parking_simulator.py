@@ -17,6 +17,7 @@ import json
 import logging
 import os
 import random
+import signal
 import sys
 import time
 import urllib.error
@@ -35,7 +36,6 @@ from config.config_loader import load_project_env
 from config.database import normalize_database_url
 from config.facility import configured_facility_id
 from config.settings import get_settings
-from scripts.run_isolated_api import isolated_database_url
 from services.rules import BAY_CLASSES
 from utils.logging_setup import setup_logging
 
@@ -43,7 +43,6 @@ logger = logging.getLogger("parkify.simulator")
 
 load_project_env()
 FACILITY_ID = configured_facility_id()
-API_ROOT = f"http://127.0.0.1:5002/api/facilities/{FACILITY_ID}"
 EVENT_INTERVAL_SECONDS = 5
 CLOCK_STEP = timedelta(minutes=5)
 FLEET_SIZE = 3
@@ -159,16 +158,18 @@ def request_every_ticks() -> int:
 class SimulatorClient:
     """One machine session. Cookies stay in this process, not in a browser."""
 
-    def __init__(self, email: str, password: str) -> None:
+    def __init__(self, email: str, password: str, *, api_base: str | None = None, csrf_cookie: str | None = None) -> None:
         self._email = email
         self._password = password
+        self._api_base = (api_base or os.getenv("PARKIFY_API_BASE", "http://127.0.0.1:5002")).rstrip("/")
+        self._csrf_cookie = csrf_cookie or os.getenv("PARKIFY_CSRF_COOKIE", "parkify_csrf")
         self._jar = http.cookiejar.CookieJar()
         self._opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(self._jar))
 
     def login(self) -> bool:
         status, payload = self._open(
             "POST",
-            "http://127.0.0.1:5002/api/auth/login",
+            f"{self._api_base}/api/auth/login",
             {"email": self._email, "password": self._password},
         )
         if status == 200 and self._csrf():
@@ -178,14 +179,14 @@ class SimulatorClient:
         return False
 
     def request(self, method: str, path: str, payload: dict | None = None, *, retry: bool = True):
-        status, body = self._open(method, f"{API_ROOT}{path}", payload)
+        status, body = self._open(method, f"{self._api_base}/api/facilities/{FACILITY_ID}{path}", payload)
         if status == 401 and retry and self.login():
             return self.request(method, path, payload, retry=False)
         return status, body
 
     def _csrf(self) -> str:
         for cookie in self._jar:
-            if cookie.name == "parkify_csrf":
+            if cookie.name == self._csrf_cookie:
                 return cookie.value
         return ""
 
@@ -401,11 +402,24 @@ def run_once(
     return summarize_tick(clock, "exit", status=status)
 
 
-def main() -> None:
+def simulator_database_url() -> str:
+    """Use the guarded local demo database, or the isolated host database."""
+    if os.getenv("PARKIFY_ENV", "").strip().lower() == "demo":
+        from config.demo_guard import assert_demo_database
+
+        url = os.getenv("DATABASE_URL", "")
+        assert_demo_database(url)
+        return url
     dotenv_values(ROOT / ".env")
+    from scripts.run_isolated_api import isolated_database_url
+
+    return isolated_database_url()
+
+
+def main() -> None:
     setup_logging(get_settings())
     email, password = simulator_credentials()
-    database_url = isolated_database_url()
+    database_url = simulator_database_url()
     engine = create_engine(normalize_database_url(database_url))
     client = SimulatorClient(email, password)
     if not client.login():
@@ -419,15 +433,27 @@ def main() -> None:
         int(CLOCK_STEP.total_seconds() // 60),
         request_every,
     )
+    stop = False
+
+    def request_stop(signum, _frame) -> None:
+        nonlocal stop
+        stop = True
+        logger.info("simulator stopping signal=%s", signum)
+
+    signal.signal(signal.SIGTERM, request_stop)
+    signal.signal(signal.SIGINT, request_stop)
     tick = 0
     try:
-        while True:
+        while not stop:
             try:
                 logger.info(run_once(rng, engine, client, tick=tick, request_every=request_every))
             except Exception as exc:
                 logger.error("simulator tick failed error=%s", type(exc).__name__)
             tick += 1
-            time.sleep(EVENT_INTERVAL_SECONDS)
+            slept = 0.0
+            while slept < EVENT_INTERVAL_SECONDS and not stop:
+                time.sleep(0.25)
+                slept += 0.25
     finally:
         engine.dispose()
 

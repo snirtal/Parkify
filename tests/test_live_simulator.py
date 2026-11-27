@@ -12,6 +12,7 @@ from scripts.live_parking_simulator import (
     next_facility_moment,
     reservation_action,
     simulator_credentials,
+    simulator_database_url,
 )
 from scripts.run_isolated_api import isolated_database_url
 from tests.db_safety import database_identity
@@ -97,6 +98,21 @@ def test_simulator_refuses_to_start_without_credentials(monkeypatch):
     monkeypatch.delenv("SIMULATOR_PASSWORD", raising=False)
     with pytest.raises(SystemExit, match="credentials"):
         simulator_credentials()
+
+
+def test_demo_simulator_uses_only_the_local_database(monkeypatch):
+    monkeypatch.setenv("PARKIFY_ENV", "demo")
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "postgresql://parkify:parkify@postgres:5432/parkify?sslmode=disable",
+    )
+    assert "postgres:5432/parkify" in simulator_database_url()
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "postgresql://parkify:parkify@ep-example.neon.tech/parkify?sslmode=require",
+    )
+    with pytest.raises(SystemExit, match="not the local demo"):
+        simulator_database_url()
 
 
 def test_simulator_signs_in_again_after_the_session_expires():

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from flask import Blueprint, jsonify, make_response, request
 
-from controllers.authentication import apply_login_cookies, clear_auth_cookies
+from controllers.authentication import apply_login_cookies, clear_auth_cookies, session_cookie_name
 from controllers.authorization import current_account, permission_required, public_endpoint
 from controllers.dependencies import current_services
 from controllers.parsing import json_object, required_text
@@ -43,7 +43,7 @@ def me():
 @auth_bp.post("/logout")
 @permission_required()
 def logout():
-    token = request.cookies.get("parkify_session", "")
+    token = request.cookies.get(session_cookie_name(), "")
     current_services().auth.logout(token)
     response = make_response("", 204)
     clear_auth_cookies(response)

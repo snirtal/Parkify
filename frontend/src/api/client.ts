@@ -1,3 +1,5 @@
+import { CSRF_COOKIE } from './csrfCookie'
+
 export class ApiError extends Error {
   readonly status: number
   readonly code: string
@@ -68,7 +70,7 @@ export async function apiRequest<T>(
 
 function csrfHeaders(method: string): Record<string, string> {
   if (method === 'GET' || method === 'HEAD' || typeof document === 'undefined') return {}
-  const token = readCookie(document.cookie, 'parkify_csrf')
+  const token = readCookie(document.cookie, CSRF_COOKIE)
   return token ? { 'X-CSRF-Token': token } : {}
 }
 
