@@ -8,12 +8,13 @@ from __future__ import annotations
 import pytest
 from sqlalchemy.orm import Session
 
+from config.facility import DEFAULT_FACILITY_ID
 from config.settings import get_settings
 from repositories.seed import seed_database
 from services.factory import build_services
 from services.unit_of_work import SqlAlchemyUnitOfWork
 
-FACILITY = "/api/facilities/facility-skyline"
+FACILITY = f"/api/facilities/{DEFAULT_FACILITY_ID}"
 
 
 @pytest.fixture()

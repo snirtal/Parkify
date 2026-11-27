@@ -1,4 +1,5 @@
 import type { FacilitySettings, ReservationDraft } from '../types/parking'
+import { FACILITY_ID } from '../config/facility'
 import { apiRequest } from './client'
 import { mapFacility, moneyString, reservationWindow, type FacilitySnapshot } from './mapFacility'
 import type {
@@ -10,8 +11,6 @@ import type {
   ApiSession,
   ApiSettings,
 } from './types'
-
-export const FACILITY_ID = 'facility-skyline'
 
 const root = `/api/facilities/${FACILITY_ID}`
 

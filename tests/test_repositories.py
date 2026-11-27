@@ -11,6 +11,7 @@ from decimal import Decimal
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from config.facility import DEFAULT_FACILITY_ID
 from models.orm import Vehicle
 from repositories.factory import build_repositories
 from repositories.seed import seed_database
@@ -20,7 +21,7 @@ def test_repository_queries_match_the_seeded_snapshot(db_session: Session) -> No
     seed_database(db_session)
     repos = build_repositories(db_session)
 
-    facility = repos.facilities.get_with_children("facility-skyline")
+    facility = repos.facilities.get_with_children(DEFAULT_FACILITY_ID)
     assert facility is not None
     assert facility.settings.hourly_rate == Decimal("4.20")
     floors = sorted(facility.floors, key=lambda floor: floor.level_index)
@@ -84,7 +85,7 @@ def test_repository_queries_match_the_seeded_snapshot(db_session: Session) -> No
 def test_settings_changes_stay_on_the_pending_object(db_session: Session) -> None:
     seed_database(db_session)
     repos = build_repositories(db_session)
-    settings = repos.settings.get_for_facility("facility-skyline")
+    settings = repos.settings.get_for_facility(DEFAULT_FACILITY_ID)
     assert settings is not None
     repos.settings.apply_changes(settings, grace_period_minutes=20)
     assert settings.grace_period_minutes == 20

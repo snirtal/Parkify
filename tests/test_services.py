@@ -12,13 +12,14 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from config.facility import DEFAULT_FACILITY_ID
 from repositories.seed import seed_database
 from services.exceptions import ConflictError, ValidationError
 from services.factory import build_services
 from services.results import FacilitySettingsUpdate
 from services.unit_of_work import SqlAlchemyUnitOfWork
 
-FACILITY_ID = "facility-skyline"
+FACILITY_ID = DEFAULT_FACILITY_ID
 
 
 def test_dashboard_matches_the_seeded_snapshot(db_session: Session) -> None:

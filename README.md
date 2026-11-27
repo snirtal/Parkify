@@ -21,6 +21,7 @@ Copy `.env.example` to `.env` and set the Neon URLs. Do not commit `.env`.
 - `DATABASE_URL` — pooled URL for the API
 - `MIGRATION_DATABASE_URL` — direct URL for Alembic
 - `TEST_DATABASE_URL` — a separate Neon branch for tests
+- `FACILITY_ID` and `VITE_FACILITY_ID` — optional. Both default to `facility-skyline`.
 
 ```bash
 python3 -m venv .venv
@@ -40,9 +41,12 @@ Frontend: http://127.0.0.1:5173
 
 `make start` runs the isolated API, frontend, and simulator. When the application is already up, it resumes the simulator only. Events arrive every 5 seconds, and the browser reloads every 2 seconds. `make stop` stops new simulated events and leaves the application open. `make shutdown` stops the isolated API, frontend, and simulator.
 
+`make reset` stops the simulator, asks for confirmation, and deletes only that simulator's vehicles, sessions, gate activity, and reservations from the isolated test database. Seed data stays. The application keeps running and refreshes on its own. The simulator stays stopped.
+
 ```bash
 make start
 make stop
+make reset
 make shutdown
 ```
 

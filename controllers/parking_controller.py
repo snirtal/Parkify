@@ -7,10 +7,8 @@ from flask import Blueprint, jsonify
 from controllers.dependencies import current_services
 from controllers.parsing import identifier, query_choice, query_text
 from controllers.serialization import dump
-from services.rules import SPOT_STATUSES
+from services.rules import BAY_CLASSES, SPOT_STATUSES
 from utils.errors import AppError
-
-BAY_CLASSES = ("Standard", "EV Fast 150kW", "VIP Priority", "Accessible")
 
 parking_bp = Blueprint("parking", __name__, url_prefix="/api/facilities/<facility_id>")
 

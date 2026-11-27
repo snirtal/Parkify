@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { FACILITY_ID } from '../config/facility'
 import { ApiError, apiRequest } from './client'
 import {
   cancelReservation,
@@ -213,7 +214,7 @@ describe('api client', () => {
       'fetch',
       vi.fn(async () => json({ error: { code: 'spot_occupied', message: 'Space P-210 is occupied.' } }, 409)),
     )
-    await expect(apiRequest('/api/facilities/facility-skyline/entries', { method: 'POST', body: {} })).rejects.toMatchObject({
+    await expect(apiRequest(`/api/facilities/${FACILITY_ID}/entries`, { method: 'POST', body: {} })).rejects.toMatchObject({
       status: 409,
       code: 'spot_occupied',
       message: 'Space P-210 is occupied.',

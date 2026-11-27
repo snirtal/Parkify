@@ -32,10 +32,13 @@ if str(ROOT) not in sys.path:
 from dotenv import dotenv_values
 from sqlalchemy import create_engine, text
 
+from config.config_loader import load_project_env
 from config.database import normalize_database_url
+from config.facility import configured_facility_id
 from scripts.run_isolated_api import isolated_database_url
 
-FACILITY_ID = "facility-skyline"
+load_project_env()
+FACILITY_ID = configured_facility_id()
 API_ROOT = f"http://127.0.0.1:5002/api/facilities/{FACILITY_ID}"
 EVENT_INTERVAL_SECONDS = 5
 CLOCK_STEP = timedelta(minutes=5)

@@ -1,7 +1,7 @@
 """Idempotent seed for the Skyline Autonomous Hub snapshot.
 
-Source of truth: frontend/src/data/mockParkingData.ts and the default
-facility settings in frontend/src/utils/settingsUtils.ts.
+This module is the source of the seeded facility, its settings, and the
+spot catalog. The frontend reads those values from the API.
 
 Occupancy is not copied onto parking spots. Open sessions, maintenance
 reasons, and reservation windows are stored separately.
@@ -25,6 +25,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from config.database import check_database_connection, create_db_engine
+from config.facility import DEFAULT_FACILITY_ID
 from config.settings import get_settings
 from models.orm import (
     Facility,
@@ -38,7 +39,14 @@ from models.orm import (
     Vehicle,
 )
 
-FACILITY_ID = "facility-skyline"
+FACILITY_ID = DEFAULT_FACILITY_ID
+FACILITY_NAME = "Skyline Autonomous Hub"
+FACILITY_ADDRESS = "13 Skyline, Chicago, 60611"
+OPERATING_HOURS = "00:00 – 23:59 (24/7)"
+DEFAULT_HOURLY_RATE = Decimal("4.20")
+DEFAULT_DAILY_MAX_RATE = Decimal("28.00")
+DEFAULT_GRACE_PERIOD_MINUTES = 15
+DEFAULT_EV_SURCHARGE = Decimal("0.60")
 SIMULATED_DATE = date(2026, 11, 25)
 CLOCK = datetime(2026, 11, 25, 14, 24, 0)
 DEFAULT_SESSION_START = datetime(2026, 11, 25, 8, 0, 0)
@@ -194,9 +202,9 @@ def _merge_all(session: Session) -> None:
     session.merge(
         Facility(
             id=FACILITY_ID,
-            name="Skyline Autonomous Hub",
-            address="13 Skyline, Chicago, 60611",
-            operating_hours="00:00 – 23:59 (24/7)",
+            name=FACILITY_NAME,
+            address=FACILITY_ADDRESS,
+            operating_hours=OPERATING_HOURS,
             simulated_date=SIMULATED_DATE,
             simulated_time=time(14, 24),
             snapshot_label="Today, 11/25/26 14:24:05 PM",
@@ -206,10 +214,10 @@ def _merge_all(session: Session) -> None:
         FacilitySettings(
             id="settings-skyline",
             facility_id=FACILITY_ID,
-            hourly_rate=Decimal("4.20"),
-            daily_max_rate=Decimal("28.00"),
-            grace_period_minutes=15,
-            ev_surcharge=Decimal("0.60"),
+            hourly_rate=DEFAULT_HOURLY_RATE,
+            daily_max_rate=DEFAULT_DAILY_MAX_RATE,
+            grace_period_minutes=DEFAULT_GRACE_PERIOD_MINUTES,
+            ev_surcharge=DEFAULT_EV_SURCHARGE,
             high_occupancy_alert=True,
             reservation_overstay_alert=True,
             space_fault_alert=True,

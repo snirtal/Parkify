@@ -3,6 +3,7 @@ import { defineConfig } from 'vite'
 
 /** Dev server for the live simulator. Proxies /api to the isolated API only. */
 export default defineConfig({
+  envDir: '..',
   plugins: [react()],
   server: {
     host: '127.0.0.1',

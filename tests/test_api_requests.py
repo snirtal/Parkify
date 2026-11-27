@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-FACILITY = "/api/facilities/facility-skyline"
+from config.facility import DEFAULT_FACILITY_ID
+
+FACILITY = f"/api/facilities/{DEFAULT_FACILITY_ID}"
 
 
 def test_invalid_query_status_is_400(client):

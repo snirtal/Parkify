@@ -7,7 +7,7 @@ import os
 import pytest
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import NullPool
 
@@ -53,6 +53,22 @@ def migrated_engine():
     engine.dispose()
 
 
+def _hide_committed_activity(session: Session) -> None:
+    """Hide activity already stored on the test branch for this transaction only.
+
+    The simulator commits vehicles, sessions, and gate events on the same
+    branch. Seed merges the catalog rows but does not remove those extras, so
+    snapshot counts and open spots would depend on earlier simulator runs.
+    These deletes stay inside the connection transaction started above and are
+    rolled back with it. Nothing is committed.
+    """
+    session.execute(text("DELETE FROM gate_activities"))
+    session.execute(text("DELETE FROM parking_sessions"))
+    session.execute(text("DELETE FROM reservations"))
+    session.execute(text("DELETE FROM vehicles"))
+    session.flush()
+
+
 @pytest.fixture()
 def db_session(migrated_engine):
     """A transaction that is always rolled back, including seed commits."""
@@ -65,6 +81,7 @@ def db_session(migrated_engine):
         join_transaction_mode="create_savepoint",
     )
     try:
+        _hide_committed_activity(session)
         yield session
     finally:
         session.close()

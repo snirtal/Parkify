@@ -19,6 +19,7 @@ from services.results import (
     ZoneOccupancy,
 )
 from services.rules import (
+    BAY_CLASSES,
     SPOT_STATUSES,
     derive_status,
     matches_code_or_plate,
@@ -27,8 +28,6 @@ from services.rules import (
 from services.support import Clock, facility_moment, require_facility, require_settings, run_in_transaction
 
 logger = logging.getLogger("parkify.service.parking")
-
-BAY_CLASSES = frozenset({"Standard", "EV Fast 150kW", "VIP Priority", "Accessible"})
 
 
 class ParkingService:

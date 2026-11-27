@@ -215,12 +215,44 @@ shutdown_all() {
   stop_matching "isolated API" "$API_PID" "$API_PATTERN"
 }
 
+ensure_application() {
+  ensure_running \
+    "isolated API" \
+    "$API_PID" \
+    "$API_PATTERN" \
+    "$LIVE_DIR/api.log" \
+    "cd '$ROOT' && exec .venv/bin/python scripts/run_isolated_api.py"
+  if ! wait_for_port "$API_PORT"; then
+    echo "isolated API did not listen on 127.0.0.1:$API_PORT" >&2
+    return 1
+  fi
+  ensure_running \
+    "frontend" \
+    "$WEB_PID" \
+    "$WEB_PATTERN" \
+    "$LIVE_DIR/web.log" \
+    "cd '$ROOT/frontend' && exec npm run dev -- --config vite.live.config.ts --host 127.0.0.1 --port $WEB_PORT --strictPort"
+  if ! wait_for_port "$WEB_PORT"; then
+    echo "frontend did not listen on 127.0.0.1:$WEB_PORT" >&2
+    return 1
+  fi
+}
+
+reset_data() {
+  stop_matching "simulator" "$SIM_PID" "$SIM_PATTERN"
+  "$ROOT/.venv/bin/python" "$ROOT/scripts/reset_simulator_data.py"
+  ensure_application
+  echo "Simulation remains stopped."
+  echo "Browser: $URL"
+}
+
 case "${1:-}" in
   start) start_all ;;
   stop) stop_simulator ;;
   shutdown) shutdown_all ;;
+  reset) reset_data ;;
   *)
-    echo "usage: $0 start|stop|shutdown" >&2
+    echo "usage: $0 start|stop|shutdown|reset" >&2
     exit 1
     ;;
 esac

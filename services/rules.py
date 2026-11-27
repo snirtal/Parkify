@@ -16,6 +16,11 @@ SPOT_STATUSES = ("available", "occupied", "reserved", "unavailable")
 HIGH_OCCUPANCY_THRESHOLD = Decimal("85.0")
 EV_BAY_CLASS = "EV Fast 150kW"
 STANDARD_BAY_CLASS = "Standard"
+VIP_BAY_CLASS = "VIP Priority"
+ACCESSIBLE_BAY_CLASS = "Accessible"
+BAY_CLASSES = frozenset(
+    {STANDARD_BAY_CLASS, EV_BAY_CLASS, VIP_BAY_CLASS, ACCESSIBLE_BAY_CLASS}
+)
 
 
 def normalize_search_token(value: str) -> str:
