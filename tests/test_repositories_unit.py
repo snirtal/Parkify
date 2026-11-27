@@ -95,6 +95,8 @@ def test_build_repositories_uses_one_session() -> None:
     assert repositories.spots.session is session
     assert repositories.reservations.session is session
     assert repositories.gate_activities.session is session
+    assert repositories.users.session is session
+    assert repositories.auth_sessions.session is session
 
 
 def test_invalid_page_is_rejected_without_a_query() -> None:

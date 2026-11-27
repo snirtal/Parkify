@@ -6,9 +6,12 @@ from random import Random
 import pytest
 
 from scripts.live_parking_simulator import (
+    SimulatorClient,
     choose_gate_action,
     generate_plate,
     next_facility_moment,
+    reservation_action,
+    simulator_credentials,
 )
 from scripts.run_isolated_api import isolated_database_url
 from tests.db_safety import database_identity
@@ -49,6 +52,75 @@ def test_fleet_enters_while_there_is_room_and_an_open_stall():
 
 def test_no_event_when_nothing_can_enter_or_leave():
     assert choose_gate_action([], [], Random(1)) is None
+
+
+def test_pending_and_rejected_requests_do_not_move_the_gate():
+    moment = datetime(2026, 11, 25, 14, 24)
+    reservations = [
+        {
+            "effective_status": "Pending",
+            "starts_at": "2026-11-25T14:00:00",
+            "ends_at": "2026-11-25T16:00:00",
+            "plate_number": "LXA-100B",
+            "spot_code": "P-210",
+        },
+        {
+            "effective_status": "Rejected",
+            "starts_at": "2026-11-25T14:00:00",
+            "ends_at": "2026-11-25T16:00:00",
+            "plate_number": "LXB-200C",
+            "spot_code": "P-211",
+        },
+    ]
+    assert reservation_action(reservations, [], moment) is None
+
+
+def test_an_approved_reservation_arrives_and_later_departs():
+    moment = datetime(2026, 11, 25, 14, 24)
+    reservation = {
+        "effective_status": "Active",
+        "starts_at": "2026-11-25T14:00:00",
+        "ends_at": "2026-11-25T16:00:00",
+        "plate_number": "LXA-100B",
+        "spot_code": "P-210",
+    }
+    assert reservation_action([reservation], [], moment) == ("entry", "LXA-100B", "P-210")
+    parked = [{"plate_number": "LXA-100B", "spot_code": "P-210"}]
+    assert reservation_action([reservation], parked, moment) is None
+    later = dict(reservation, effective_status="Completed")
+    departed = reservation_action([later], parked, datetime(2026, 11, 25, 16, 0))
+    assert departed == ("exit", "LXA-100B", None)
+
+
+def test_simulator_refuses_to_start_without_credentials(monkeypatch):
+    monkeypatch.delenv("SIMULATOR_EMAIL", raising=False)
+    monkeypatch.delenv("SIMULATOR_PASSWORD", raising=False)
+    with pytest.raises(SystemExit, match="credentials"):
+        simulator_credentials()
+
+
+def test_simulator_signs_in_again_after_the_session_expires():
+    client = SimulatorClient("simulator@parkify.example", "not-a-real-password")
+    signed_in = {"value": False}
+    calls: list[str] = []
+
+    def open_stub(method: str, url: str, payload: dict | None):
+        calls.append(f"{method} {url}")
+        if url.endswith("/api/auth/login"):
+            signed_in["value"] = True
+            return 200, {"user": {"role": "simulator"}}
+        if not signed_in["value"]:
+            return 401, {"error": {"code": "unauthenticated"}}
+        return 200, {"spots": []}
+
+    client._open = open_stub
+    client._csrf = lambda: "csrf-token" if signed_in["value"] else ""
+    status, body = client.request("GET", "/occupancy")
+    assert status == 200
+    assert body == {"spots": []}
+    assert calls[0].endswith("/occupancy")
+    assert "/api/auth/login" in calls[1]
+    assert calls[2].endswith("/occupancy")
 
 
 def test_facility_clock_moves_forward_by_five_minutes():

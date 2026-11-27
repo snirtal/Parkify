@@ -1,3 +1,10 @@
+import {
+  OCCUPANCY_READ,
+  RESERVATIONS_REQUESTS_READ,
+  SESSIONS_READ,
+  SETTINGS_READ,
+} from '../auth/permissions'
+
 export type NavIconName =
   | 'dashboard'
   | 'map'
@@ -14,6 +21,7 @@ export interface NavItem {
   subtitle: string
   icon: NavIconName
   section: NavSection
+  permission: string
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -23,6 +31,7 @@ export const NAV_ITEMS: NavItem[] = [
     subtitle: 'Real-time facility overview and occupancy summary',
     icon: 'dashboard',
     section: 'Operations',
+    permission: OCCUPANCY_READ,
   },
   {
     path: '/parking-map',
@@ -30,6 +39,7 @@ export const NAV_ITEMS: NavItem[] = [
     subtitle: 'Interactive zone and bay availability layout',
     icon: 'map',
     section: 'Operations',
+    permission: OCCUPANCY_READ,
   },
   {
     path: '/sessions',
@@ -37,13 +47,15 @@ export const NAV_ITEMS: NavItem[] = [
     subtitle: 'Live vehicle entries, durations, and exits',
     icon: 'sessions',
     section: 'Operations',
+    permission: SESSIONS_READ,
   },
   {
     path: '/reservations',
     label: 'Reservations',
-    subtitle: 'Scheduled parking bookings and upcoming arrivals',
+    subtitle: 'Customer requests and scheduled parking bookings',
     icon: 'reservations',
     section: 'Management',
+    permission: RESERVATIONS_REQUESTS_READ,
   },
   {
     path: '/analytics',
@@ -51,6 +63,7 @@ export const NAV_ITEMS: NavItem[] = [
     subtitle: 'Utilization trends, peak hours, and capacity insights',
     icon: 'analytics',
     section: 'Management',
+    permission: OCCUPANCY_READ,
   },
   {
     path: '/settings',
@@ -58,6 +71,7 @@ export const NAV_ITEMS: NavItem[] = [
     subtitle: 'Facility zones, rates, and system preferences',
     icon: 'settings',
     section: 'Management',
+    permission: SETTINGS_READ,
   },
 ]
 

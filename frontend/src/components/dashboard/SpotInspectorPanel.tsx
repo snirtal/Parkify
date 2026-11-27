@@ -84,7 +84,9 @@ export function SpotInspectorPanel({
 
   const rightCardSub =
     bay.status === 'available'
-      ? 'Dynamic bay rate'
+      ? bay.ratePerHour
+        ? 'Dynamic bay rate'
+        : 'Available now'
       : bay.status === 'unavailable'
         ? 'Automated check'
         : (vehicle?.untilCaption ?? 'Scheduled window')
@@ -94,7 +96,7 @@ export function SpotInspectorPanel({
     : bay.status === 'reserved'
       ? (bay.reservedUntil ?? '--.--')
       : bay.status === 'available'
-        ? bay.ratePerHour
+        ? bay.ratePerHour || 'Open'
         : '--.--'
 
   return (

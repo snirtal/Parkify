@@ -68,6 +68,19 @@ export interface GateLogItem {
 
 export type ReservationStatus = 'Active' | 'Scheduled' | 'Completed' | 'Cancelled'
 
+export type ReservationRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Expired'
+
+export interface ReservationRequestItem {
+  id: string
+  plateNumber: string
+  bayClass: string
+  startsAt: string
+  endsAt: string
+  durationMinutes: number
+  status: ReservationRequestStatus
+  spotCode: string | null
+}
+
 export interface ReservationItem {
   id: string
   plateNumber: string

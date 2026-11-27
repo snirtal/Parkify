@@ -1,5 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { NAV_ITEMS, type NavItem } from '../../config/navigation'
+import { useAuth, useSignOut } from '../../auth/useAuth'
+import { can } from '../../auth/permissions'
 import { useParkingState } from '../../context/useParkingState'
 import { BrandLogoIcon, CloseIcon, NavIcon } from '../icons/AppIcons'
 import './Sidebar.css'
@@ -18,6 +20,9 @@ export function Sidebar({
   onCloseMobile,
 }: SidebarProps) {
   const { settings, dataset } = useParkingState()
+  const { user } = useAuth()
+  const { signOut, signingOut, error } = useSignOut()
+  const visible = items.filter((item) => can(user?.role, item.permission))
 
   return (
     <aside
@@ -45,7 +50,7 @@ export function Sidebar({
       </div>
 
       <nav className="mobile-drawer__nav">
-        {items.map((item) => (
+        {visible.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
@@ -63,6 +68,22 @@ export function Sidebar({
           </NavLink>
         ))}
       </nav>
+
+      <div className="mobile-drawer__session">
+        <button
+          type="button"
+          className="mobile-drawer__logout"
+          onClick={() => void signOut()}
+          disabled={signingOut}
+        >
+          {signingOut ? 'Signing out…' : 'Log out'}
+        </button>
+        {error ? (
+          <p className="mobile-drawer__logout-error" role="alert">
+            {error}
+          </p>
+        ) : null}
+      </div>
 
       <div className="mobile-drawer__footer">
         <span className="mobile-drawer__dot" aria-hidden="true" />

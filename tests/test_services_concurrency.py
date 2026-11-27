@@ -265,6 +265,7 @@ def _cleanup(engine) -> None:
     statements = (
         f"DELETE FROM gate_activities WHERE spot_id IN ({spot_ids}) OR vehicle_id IN ({vehicle_ids})",
         f"DELETE FROM parking_sessions WHERE spot_id IN ({spot_ids}) OR vehicle_id IN ({vehicle_ids})",
+        f"DELETE FROM reservation_requests WHERE vehicle_id IN ({vehicle_ids})",
         f"DELETE FROM reservations WHERE spot_id IN ({spot_ids}) OR vehicle_id IN ({vehicle_ids})",
         f"DELETE FROM parking_spots WHERE id IN ({spot_ids})",
         "DELETE FROM parking_zones WHERE id = 'zone-svc-conc'",

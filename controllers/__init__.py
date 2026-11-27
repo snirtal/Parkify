@@ -3,6 +3,7 @@
 from flask import Flask
 
 from controllers.analytics_controller import analytics_bp
+from controllers.auth_controller import auth_bp
 from controllers.dashboard_controller import dashboard_bp
 from controllers.gate_controller import gate_bp
 from controllers.health_controller import health_bp
@@ -14,6 +15,7 @@ from controllers.settings_controller import settings_bp
 
 __all__ = [
     "analytics_bp",
+    "auth_bp",
     "dashboard_bp",
     "gate_bp",
     "health_bp",
@@ -29,6 +31,7 @@ __all__ = [
 def register_api(app: Flask) -> None:
     """Attach every API blueprint. Routes stay under /api."""
     app.register_blueprint(health_bp)
+    app.register_blueprint(auth_bp)
     app.register_blueprint(parking_bp)
     app.register_blueprint(sessions_bp)
     app.register_blueprint(gate_bp)

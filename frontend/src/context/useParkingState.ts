@@ -3,6 +3,7 @@ import type {
   FacilitySettings,
   ReservationDraft,
   ReservationItem,
+  ReservationRequestItem,
   SmartParkingDataset,
 } from '../types/parking'
 import type { ActiveSessionRow } from '../types/sessions'
@@ -17,12 +18,15 @@ export interface ParkingContextValue {
   submitting: boolean
   dataset: SmartParkingDataset
   reservations: ReservationItem[]
+  reservationRequests: ReservationRequestItem[]
   settings: FacilitySettings
   sessions: ActiveSessionRow[]
   reload: () => void
   addReservation: (draft: ReservationDraft) => Promise<ReservationActionResult>
   updateReservation: (id: string, draft: ReservationDraft) => Promise<ReservationActionResult>
   cancelReservation: (id: string) => Promise<ActionResult>
+  approveReservationRequest: (id: string) => Promise<ActionResult>
+  rejectReservationRequest: (id: string) => Promise<ActionResult>
   updateSettings: (next: FacilitySettings) => Promise<ActionResult>
   resetSettings: () => FacilitySettings
   recordEntry: (plateNumber: string, spotCode: string) => Promise<ActionResult>

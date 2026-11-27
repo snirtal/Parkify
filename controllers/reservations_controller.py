@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 from flask import Blueprint, jsonify
 
+from controllers.authorization import current_account, permission_required
 from controllers.dependencies import current_services
 from controllers.parsing import (
     identifier,
@@ -17,6 +20,15 @@ from controllers.parsing import (
     required_timestamp,
 )
 from controllers.serialization import dump
+from services.permissions import (
+    RESERVATIONS_APPROVE,
+    RESERVATIONS_MANAGE,
+    RESERVATIONS_READ,
+    RESERVATIONS_REJECT,
+    RESERVATIONS_REQUESTS_CREATE,
+    RESERVATIONS_REQUESTS_READ,
+)
+from services.rules import BAY_CLASSES
 from utils.errors import AppError
 
 RESERVATION_STATUSES = ("Active", "Scheduled", "Completed", "Cancelled")
@@ -29,6 +41,7 @@ reservations_bp = Blueprint(
 
 
 @reservations_bp.get("/reservations")
+@permission_required(RESERVATIONS_READ)
 def list_reservations(facility_id: str):
     facility_id = identifier(facility_id, "facility_id")
     status = query_choice("status", RESERVATION_STATUSES)
@@ -48,6 +61,7 @@ def list_reservations(facility_id: str):
 
 
 @reservations_bp.post("/reservations")
+@permission_required(RESERVATIONS_MANAGE)
 def create_reservation(facility_id: str):
     facility_id = identifier(facility_id, "facility_id")
     payload = json_object()
@@ -68,6 +82,7 @@ def create_reservation(facility_id: str):
 
 
 @reservations_bp.post("/reservations/lifecycle")
+@permission_required(RESERVATIONS_MANAGE)
 def refresh_reservation_lifecycle(facility_id: str):
     facility_id = identifier(facility_id, "facility_id")
     refreshed = current_services().reservations.refresh_lifecycle(facility_id)
@@ -75,6 +90,7 @@ def refresh_reservation_lifecycle(facility_id: str):
 
 
 @reservations_bp.get("/reservations/<reservation_id>")
+@permission_required(RESERVATIONS_READ)
 def get_reservation(facility_id: str, reservation_id: str):
     facility_id = identifier(facility_id, "facility_id")
     reservation_id = identifier(reservation_id, "reservation_id")
@@ -83,6 +99,7 @@ def get_reservation(facility_id: str, reservation_id: str):
 
 
 @reservations_bp.patch("/reservations/<reservation_id>")
+@permission_required(RESERVATIONS_MANAGE)
 def update_reservation(facility_id: str, reservation_id: str):
     facility_id = identifier(facility_id, "facility_id")
     reservation_id = identifier(reservation_id, "reservation_id")
@@ -114,8 +131,82 @@ def update_reservation(facility_id: str, reservation_id: str):
 
 
 @reservations_bp.post("/reservations/<reservation_id>/cancellation")
+@permission_required(RESERVATIONS_MANAGE)
 def cancel_reservation(facility_id: str, reservation_id: str):
     facility_id = identifier(facility_id, "facility_id")
     reservation_id = identifier(reservation_id, "reservation_id")
     cancelled = current_services().reservations.cancel_reservation(facility_id, reservation_id)
     return jsonify(dump(cancelled)), 200
+
+
+@reservations_bp.post("/reservation-requests")
+@permission_required(RESERVATIONS_REQUESTS_CREATE)
+def create_reservation_request(facility_id: str):
+    facility_id = identifier(facility_id, "facility_id")
+    payload = json_object()
+    plate_number = required_text(payload, "plate_number", maximum=16)
+    bay_class = required_text(payload, "bay_class", maximum=32)
+    if bay_class not in BAY_CLASSES:
+        raise AppError(
+            "Parking type must be a known bay class.",
+            code="validation_error",
+            status_code=400,
+        )
+    starts_at = required_timestamp(payload, "starts_at")
+    ends_at = _request_end(payload, starts_at)
+    created = current_services().reservation_requests.create_request(
+        facility_id,
+        plate_number,
+        bay_class,
+        starts_at,
+        ends_at,
+    )
+    return jsonify(dump(created)), 201
+
+
+@reservations_bp.get("/reservation-requests")
+@permission_required(RESERVATIONS_REQUESTS_READ)
+def list_reservation_requests(facility_id: str):
+    facility_id = identifier(facility_id, "facility_id")
+    status = query_choice("status", ("Pending", "Approved", "Rejected", "Expired"))
+    requests = current_services().reservation_requests.list_requests(facility_id, status=status)
+    return jsonify({"items": dump(requests)}), 200
+
+
+@reservations_bp.post("/reservation-requests/<request_id>/approval")
+@permission_required(RESERVATIONS_APPROVE)
+def approve_reservation_request(facility_id: str, request_id: str):
+    facility_id = identifier(facility_id, "facility_id")
+    request_id = identifier(request_id, "request_id")
+    approved = current_services().reservation_requests.approve_request(
+        facility_id,
+        request_id,
+        actor_id=current_account().id,
+    )
+    return jsonify(dump(approved)), 200
+
+
+@reservations_bp.post("/reservation-requests/<request_id>/rejection")
+@permission_required(RESERVATIONS_REJECT)
+def reject_reservation_request(facility_id: str, request_id: str):
+    facility_id = identifier(facility_id, "facility_id")
+    request_id = identifier(request_id, "request_id")
+    rejected = current_services().reservation_requests.reject_request(
+        facility_id,
+        request_id,
+        actor_id=current_account().id,
+    )
+    return jsonify(dump(rejected)), 200
+
+
+def _request_end(payload: dict, starts_at):
+    duration = payload.get("duration_minutes")
+    if duration is not None:
+        if type(duration) is not int or not 15 <= duration <= 24 * 60:
+            raise AppError(
+                "Duration must be between 15 minutes and 24 hours.",
+                code="validation_error",
+                status_code=400,
+            )
+        return starts_at + timedelta(minutes=duration)
+    return required_timestamp(payload, "ends_at")

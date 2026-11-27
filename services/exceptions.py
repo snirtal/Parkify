@@ -42,3 +42,48 @@ class ConstraintConflict(ConflictError):
 
     def __init__(self, message: str) -> None:
         super().__init__(message, code="constraint_conflict")
+
+
+class AuthenticationError(DomainError):
+    """The caller is not signed in, or the credentials are not valid."""
+
+    status_code = 401
+
+    def __init__(self, message: str, *, code: str = "unauthenticated") -> None:
+        super().__init__(message, code=code)
+
+
+class InactiveAccountError(AuthenticationError):
+    """The password matched an account that is not allowed to sign in."""
+
+    status_code = 403
+
+    def __init__(self, message: str = "This account is inactive.", *, code: str = "account_inactive") -> None:
+        super().__init__(message, code=code)
+
+
+class CsrfError(DomainError):
+    """A cookie-authenticated change did not include the matching CSRF token."""
+
+    status_code = 403
+
+    def __init__(self, message: str = "The security token is missing or invalid.", *, code: str = "csrf_failed") -> None:
+        super().__init__(message, code=code)
+
+
+class AuthorizationError(DomainError):
+    """The signed-in operator does not have permission for this action."""
+
+    status_code = 403
+
+    def __init__(self, message: str = "You do not have access to this action.", *, code: str = "forbidden") -> None:
+        super().__init__(message, code=code)
+
+
+class RateLimitError(DomainError):
+    """Too many attempts in the configured window."""
+
+    status_code = 429
+
+    def __init__(self, message: str = "Too many sign-in attempts. Try again later.", *, code: str = "rate_limited") -> None:
+        super().__init__(message, code=code)

@@ -114,6 +114,35 @@
   flex-shrink: 0;
 }
 
+.top-nav__logout {
+  height: 42px;
+  padding: 0 14px;
+  border-radius: 13px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-pill);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.top-nav__logout:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.top-nav__logout:disabled {
+  opacity: 0.65;
+  cursor: progress;
+}
+
+.top-nav__logout-error {
+  margin: 0;
+  max-width: 140px;
+  font-size: 0.72rem;
+  color: #fda4af;
+}
+
 .top-nav__location {
   display: inline-flex;
   align-items: center;

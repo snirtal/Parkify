@@ -1,4 +1,4 @@
-.PHONY: start stop shutdown reset
+.PHONY: start stop shutdown reset logs
 
 start:
 	@bash scripts/live.sh start
@@ -11,3 +11,6 @@ shutdown:
 
 reset:
 	@bash scripts/live.sh reset
+
+logs:
+	@bash scripts/live.sh logs

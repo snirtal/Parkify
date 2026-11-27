@@ -2,12 +2,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { FACILITY_ID } from '../config/facility'
 import { ApiError, apiRequest } from './client'
 import {
+  approveReservationRequest,
   cancelReservation,
   commitChange,
   createReservation,
   loadFacility,
   recordEntry,
   recordExit,
+  rejectReservationRequest,
   saveSettings,
   updateReservation,
 } from './parkifyApi'
@@ -102,6 +104,9 @@ function installFetch() {
       const url = String(input)
       if (url.endsWith('/dashboard')) return json(dashboard)
       if (url.endsWith('/occupancy')) return json(occupancy('VEL-204X'))
+      if (url.includes('/reservation-requests') && (!init?.method || init.method === 'GET')) {
+        return json({ items: [] })
+      }
       if (url.endsWith('/reservations') && (!init?.method || init.method === 'GET')) {
         return json({ items: reservations })
       }
@@ -376,5 +381,24 @@ describe('facility loading and mutations', () => {
     expect(refreshed.settings.hourlyRate).toBe(5)
     expect(refreshed.reservations[0]?.status).toBe('Cancelled')
     expect(refreshed.sessions.map((item) => item.plateNumber)).toEqual(['VEL-204X'])
+  })
+})
+
+describe('reservation request actions', () => {
+  it('approves and rejects by id without sending a role', async () => {
+    const calls: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        calls.push(`${init?.method ?? 'GET'} ${String(input)} ${String(init?.body ?? '')}`)
+        return json({ id: 'rreq-1', status: 'Approved' })
+      }),
+    )
+    await approveReservationRequest('rreq-1')
+    await rejectReservationRequest('rreq-2')
+    expect(calls[0]).toContain('/reservation-requests/rreq-1/approval')
+    expect(calls[0]).toContain('POST')
+    expect(calls[0]).not.toContain('role')
+    expect(calls[1]).toContain('/reservation-requests/rreq-2/rejection')
   })
 })

@@ -1,4 +1,5 @@
-import type { FacilitySettings, ReservationDraft } from '../types/parking'
+import type { FacilitySettings, ReservationDraft, ReservationRequestItem } from '../types/parking'
+import { permissionsForRole, RESERVATIONS_READ, RESERVATIONS_REQUESTS_READ, SESSIONS_READ, GATE_READ, SETTINGS_READ } from '../auth/permissions'
 import { FACILITY_ID } from '../config/facility'
 import { apiRequest } from './client'
 import { mapFacility, moneyString, reservationWindow, type FacilitySnapshot } from './mapFacility'
@@ -8,41 +9,88 @@ import type {
   ApiOccupancy,
   ApiOccupancySeries,
   ApiReservation,
+  ApiReservationRequest,
   ApiSession,
   ApiSettings,
 } from './types'
 
 const root = `/api/facilities/${FACILITY_ID}`
 
-export async function loadFacility(signal?: AbortSignal): Promise<FacilitySnapshot> {
+export async function loadFacility(
+  signal?: AbortSignal,
+  granted: ReadonlySet<string> = permissionsForRole('admin'),
+): Promise<FacilitySnapshot> {
   const dashboard = await apiRequest<ApiDashboard>(`${root}/dashboard`, { signal })
   const date = dashboard.snapshot_time.slice(0, 10)
-  const [occupancy, reservationPage, settings, sessionPage, gatePage, series] = await Promise.all([
-    apiRequest<ApiOccupancy>(`${root}/occupancy`, { signal }),
-    apiRequest<{ items: ApiReservation[] }>(`${root}/reservations`, { signal }),
-    apiRequest<ApiSettings>(`${root}/settings`, { signal }),
-    apiRequest<{ items: ApiSession[] }>(`${root}/sessions`, { signal }),
-    apiRequest<ApiGatePage>(`${root}/gate-activity?limit=20`, { signal }),
-    apiRequest<ApiOccupancySeries>(
-      `${root}/analytics/occupancy?start=${date}T00:00:00&end=${date}T23:59:00&bucket_minutes=60`,
-      { signal },
+  const occupancy = await apiRequest<ApiOccupancy>(`${root}/occupancy`, { signal })
+  const reservationPage = granted.has(RESERVATIONS_READ)
+    ? await apiRequest<{ items: ApiReservation[] }>(`${root}/reservations`, { signal })
+    : { items: [] }
+  const settings = granted.has(SETTINGS_READ)
+    ? await apiRequest<ApiSettings>(`${root}/settings`, { signal })
+    : settingsFromDashboard(dashboard)
+  const sessionPage = granted.has(SESSIONS_READ)
+    ? await apiRequest<{ items: ApiSession[] }>(`${root}/sessions`, { signal })
+    : { items: [] }
+  const gatePage = granted.has(GATE_READ)
+    ? await apiRequest<ApiGatePage>(`${root}/gate-activity?limit=20`, { signal })
+    : { items: dashboard.recent_gate_activity ?? [] }
+  const series = granted.has('occupancy.read')
+    ? await apiRequest<ApiOccupancySeries>(
+        `${root}/analytics/occupancy?start=${date}T00:00:00&end=${date}T23:59:00&bucket_minutes=60`,
+        { signal },
+      )
+    : { has_history: false, points: [] }
+  const requestPage = granted.has(RESERVATIONS_REQUESTS_READ)
+    ? await apiRequest<{ items: ApiReservationRequest[] }>(`${root}/reservation-requests`, { signal })
+    : { items: [] }
+  return {
+    ...mapFacility(
+      occupancy,
+      dashboard,
+      reservationPage.items,
+      settings,
+      sessionPage.items,
+      gatePage.items,
+      series,
     ),
-  ])
-  return mapFacility(
-    occupancy,
-    dashboard,
-    reservationPage.items,
-    settings,
-    sessionPage.items,
-    gatePage.items,
-    series,
-  )
+    reservationRequests: requestPage.items.map(mapRequest),
+  }
+}
+
+function mapRequest(request: ApiReservationRequest): ReservationRequestItem {
+  return {
+    id: request.id,
+    plateNumber: request.plate_number,
+    bayClass: request.bay_class,
+    startsAt: request.starts_at,
+    endsAt: request.ends_at,
+    durationMinutes: request.duration_minutes,
+    status: request.status,
+    spotCode: request.spot_code,
+  }
+}
+
+function settingsFromDashboard(dashboard: ApiDashboard): ApiSettings {
+  return {
+    facility_name: dashboard.facility_name,
+    facility_address: '',
+    operating_hours: '',
+    hourly_rate: '',
+    daily_max_rate: '',
+    grace_period_minutes: 0,
+    ev_surcharge: '',
+    high_occupancy_alert: dashboard.high_occupancy_alert_armed,
+    reservation_overstay_alert: dashboard.reservation_overstay_alert_armed,
+    space_fault_alert: dashboard.space_fault_alert_armed,
+  }
 }
 
 let inFlight = false
 
 export async function commitChange(
   work: () => Promise<unknown>,
+  granted: ReadonlySet<string> = permissionsForRole('admin'),
 ): Promise<{ ok: true; snapshot: FacilitySnapshot } | { ok: false; error: string }> {
   if (inFlight) {
     return { ok: false, error: 'Please wait for the current request to finish.' }
@@ -50,7 +98,7 @@ export async function commitChange(
   inFlight = true
   try {
     await work()
-    return { ok: true, snapshot: await loadFacility() }
+    return { ok: true, snapshot: await loadFacility(undefined, granted) }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'The request failed.'
     return { ok: false, error: message }
@@ -86,6 +134,20 @@ export function updateReservation(id: string, draft: ReservationDraft) {
 export function cancelReservation(id: string) {
   return apiRequest<ApiReservation>(
     `${root}/reservations/${encodeURIComponent(id)}/cancellation`,
+    { method: 'POST', body: {} },
+  )
+}
+
+export function approveReservationRequest(id: string) {
+  return apiRequest<ApiReservationRequest>(
+    `${root}/reservation-requests/${encodeURIComponent(id)}/approval`,
+    { method: 'POST', body: {} },
+  )
+}
+
+export function rejectReservationRequest(id: string) {
+  return apiRequest<ApiReservationRequest>(
+    `${root}/reservation-requests/${encodeURIComponent(id)}/rejection`,
     { method: 'POST', body: {} },
   )
 }

@@ -141,6 +141,22 @@ class ReservationView:
 
 
 @dataclass(frozen=True)
+class ReservationRequestView:
+    """A customer request. Approved requests also name the spot that was held."""
+
+    id: str
+    plate_number: str
+    bay_class: str
+    starts_at: datetime
+    ends_at: datetime
+    duration_minutes: int
+    status: str
+    reservation_id: str | None
+    spot_code: str | None
+    decided_at: datetime | None
+
+
+@dataclass(frozen=True)
 class FacilitySettingsView:
     facility_id: str
     facility_name: str
@@ -271,3 +287,15 @@ def reservation_view(
         starts_at=reservation.starts_at,
         ends_at=reservation.ends_at,
     )
+
+
+@dataclass(frozen=True)
+class UserAccount:
+    """An operator account without the password hash."""
+
+    id: str
+    email: str
+    full_name: str
+    role: str
+    is_active: bool
+    created_at: datetime

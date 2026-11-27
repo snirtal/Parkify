@@ -62,8 +62,10 @@ def _hide_committed_activity(session: Session) -> None:
     These deletes stay inside the connection transaction started above and are
     rolled back with it. Nothing is committed.
     """
+    session.execute(text("DELETE FROM auth_sessions"))
     session.execute(text("DELETE FROM gate_activities"))
     session.execute(text("DELETE FROM parking_sessions"))
+    session.execute(text("DELETE FROM reservation_requests"))
     session.execute(text("DELETE FROM reservations"))
     session.execute(text("DELETE FROM vehicles"))
     session.flush()
@@ -87,3 +89,13 @@ def db_session(migrated_engine):
         session.close()
         transaction.rollback()
         connection.close()
+
+
+@pytest.fixture()
+def api_client(db_session):
+    """An admin signed in on the rolled-back isolated database."""
+    from tests.http_auth import operator_client
+
+    client = operator_client(db_session, role="admin", email="admin@parkify.test")
+    yield client
+    get_settings.cache_clear()

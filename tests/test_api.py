@@ -5,39 +5,9 @@ Writes stay inside the rolled-back test transaction.
 
 from __future__ import annotations
 
-import pytest
-from sqlalchemy.orm import Session
-
 from config.facility import DEFAULT_FACILITY_ID
-from config.settings import get_settings
-from repositories.seed import seed_database
-from services.factory import build_services
-from services.unit_of_work import SqlAlchemyUnitOfWork
 
 FACILITY = f"/api/facilities/{DEFAULT_FACILITY_ID}"
-
-
-@pytest.fixture()
-def api_client(db_session: Session):
-    from app import create_app
-
-    get_settings.cache_clear()
-    application = create_app("development")
-    application.config.update(TESTING=True)
-    seed_database(db_session)
-
-    def services():
-        return build_services(
-            lambda: SqlAlchemyUnitOfWork(
-                db_session,
-                close_session=False,
-                lock_timeout_ms=3000,
-            )
-        )
-
-    application.extensions["service_factory"] = services
-    yield application.test_client()
-    get_settings.cache_clear()
 
 
 def test_read_endpoints_match_the_seeded_snapshot(api_client) -> None:

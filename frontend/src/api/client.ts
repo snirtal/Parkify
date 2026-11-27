@@ -16,18 +16,28 @@ export function isAbortError(error: unknown): boolean {
 
 export async function apiRequest<T>(
   path: string,
-  init: { method?: string; body?: unknown; signal?: AbortSignal } = {},
+  init: {
+    method?: string
+    body?: unknown
+    signal?: AbortSignal
+    headers?: Record<string, string>
+    credentials?: RequestCredentials
+  } = {},
 ): Promise<T> {
+  const method = init.method ?? 'GET'
   let response: Response
   try {
     response = await fetch(path, {
-      method: init.method ?? 'GET',
+      method,
       headers: {
         Accept: 'application/json',
         ...(init.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        ...csrfHeaders(method),
+        ...init.headers,
       },
       body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
       signal: init.signal,
+      ...(init.credentials ? { credentials: init.credentials } : {}),
     })
   } catch (error) {
     if (isAbortError(error)) throw error
@@ -54,4 +64,19 @@ export async function apiRequest<T>(
   }
 
   return payload as T
+}
+
+function csrfHeaders(method: string): Record<string, string> {
+  if (method === 'GET' || method === 'HEAD' || typeof document === 'undefined') return {}
+  const token = readCookie(document.cookie, 'parkify_csrf')
+  return token ? { 'X-CSRF-Token': token } : {}
+}
+
+function readCookie(source: string, name: string): string {
+  const prefix = `${name}=`
+  for (const part of source.split(';')) {
+    const item = part.trim()
+    if (item.startsWith(prefix)) return decodeURIComponent(item.slice(prefix.length))
+  }
+  return ''
 }

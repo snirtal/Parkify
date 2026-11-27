@@ -25,4 +25,7 @@ def current_services():
             code="database_not_configured",
             status_code=500,
         )
-    return build_services(unit_of_work_factory(session_factory))
+    return build_services(
+        unit_of_work_factory(session_factory),
+        rate_limiter=current_app.extensions.get("login_rate_limiter"),
+    )

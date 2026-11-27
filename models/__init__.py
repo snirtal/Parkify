@@ -2,6 +2,7 @@
 
 from models.health import HealthStatus
 from models.orm import (
+    AuthSession,
     Facility,
     FacilitySettings,
     Floor,
@@ -10,10 +11,13 @@ from models.orm import (
     ParkingSpot,
     ParkingZone,
     Reservation,
+    ReservationRequest,
+    User,
     Vehicle,
 )
 
 __all__ = [
+    "AuthSession",
     "Facility",
     "FacilitySettings",
     "Floor",
@@ -23,5 +27,7 @@ __all__ = [
     "ParkingSpot",
     "ParkingZone",
     "Reservation",
+    "ReservationRequest",
+    "User",
     "Vehicle",
 ]

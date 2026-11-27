@@ -4,9 +4,12 @@ from __future__ import annotations
 
 from flask import Blueprint, jsonify
 
+from controllers.authorization import current_account, permission_required
 from controllers.dependencies import current_services
 from controllers.parsing import identifier, query_choice, query_text
+from controllers.presentation import omit_financial_fields
 from controllers.serialization import dump
+from services.permissions import OCCUPANCY_READ, PRICING_READ, allows
 from services.rules import BAY_CLASSES, SPOT_STATUSES
 from utils.errors import AppError
 
@@ -14,6 +17,7 @@ parking_bp = Blueprint("parking", __name__, url_prefix="/api/facilities/<facilit
 
 
 @parking_bp.get("/spots")
+@permission_required(OCCUPANCY_READ)
 def list_spots(facility_id: str):
     facility_id = identifier(facility_id, "facility_id")
     floor_id = query_text("floor_id", maximum=64)
@@ -33,10 +37,11 @@ def list_spots(facility_id: str):
         bay_class=bay_class,
         query=query,
     )
-    return jsonify({"items": dump(spots)}), 200
+    return jsonify(_visible(dump({"items": spots}))), 200
 
 
 @parking_bp.get("/spots/<spot_code>")
+@permission_required(OCCUPANCY_READ)
 def get_spot(facility_id: str, spot_code: str):
     facility_id = identifier(facility_id, "facility_id")
     spot_code = identifier(spot_code, "spot_code", maximum=16)
@@ -44,11 +49,18 @@ def get_spot(facility_id: str, spot_code: str):
     found = next((spot for spot in matches if spot.code == spot_code.upper()), None)
     if found is None:
         raise AppError("Parking spot was not found in this facility.", code="not_found", status_code=404)
-    return jsonify(dump(found)), 200
+    return jsonify(_visible(dump(found))), 200
 
 
 @parking_bp.get("/occupancy")
+@permission_required(OCCUPANCY_READ)
 def get_occupancy(facility_id: str):
     facility_id = identifier(facility_id, "facility_id")
     occupancy = current_services().parking.summarize(facility_id)
-    return jsonify(dump(occupancy)), 200
+    return jsonify(_visible(dump(occupancy))), 200
+
+
+def _visible(payload: dict) -> dict:
+    if allows(current_account().role, PRICING_READ):
+        return payload
+    return omit_financial_fields(payload)

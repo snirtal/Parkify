@@ -1,5 +1,5 @@
 import { placementForCode } from '../data/bayLayout'
-import type { ChartSlotPoint, FacilitySettings, GateLogItem, ParkingBay, ReservationItem, SmartParkingDataset, ZoneBreakdownItem } from '../types/parking'
+import type { ChartSlotPoint, FacilitySettings, GateLogItem, ParkingBay, ReservationItem, ReservationRequestItem, SmartParkingDataset, ZoneBreakdownItem } from '../types/parking'
 import type { ActiveSessionRow } from '../types/sessions'
 import type {
   ApiDashboard,
@@ -23,6 +23,7 @@ const ZONE_ACCENT: Record<string, ZoneBreakdownItem['accent']> = {
 export interface FacilitySnapshot {
   dataset: SmartParkingDataset
   reservations: ReservationItem[]
+  reservationRequests: ReservationRequestItem[]
   settings: FacilitySettings
   sessions: ActiveSessionRow[]
 }
@@ -49,6 +50,7 @@ export function mapFacility(
 
   return {
     reservations: mappedReservations,
+    reservationRequests: [],
     settings: mapSettings(settings),
     sessions: mappedSessions,
     dataset: {
@@ -93,7 +95,7 @@ function mapSpot(
     slotIndex: placement.slotIndex,
     status: spot.status,
     bayClass: spot.bay_class,
-    ratePerHour: `$${spot.hourly_rate}/h`,
+    ratePerHour: spot.hourly_rate ? `$${spot.hourly_rate}/h` : '',
     sensorNote: sensorNote(spot),
   }
   if (spot.maintenance_reason) bay.maintenanceReason = spot.maintenance_reason

@@ -246,13 +246,22 @@ reset_data() {
   echo "Browser: $URL"
 }
 
+show_logs() {
+  local logfile
+  for logfile in "$LIVE_DIR/api.log" "$LIVE_DIR/web.log" "$LIVE_DIR/simulator.log"; do
+    touch "$logfile"
+  done
+  tail -n 40 -f "$LIVE_DIR/api.log" "$LIVE_DIR/web.log" "$LIVE_DIR/simulator.log"
+}
+
 case "${1:-}" in
   start) start_all ;;
   stop) stop_simulator ;;
   shutdown) shutdown_all ;;
   reset) reset_data ;;
+  logs) show_logs ;;
   *)
-    echo "usage: $0 start|stop|shutdown|reset" >&2
+    echo "usage: $0 start|stop|shutdown|reset|logs" >&2
     exit 1
     ;;
 esac

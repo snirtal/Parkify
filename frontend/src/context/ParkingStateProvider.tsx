@@ -1,12 +1,16 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { isAbortError } from '../api/client'
+import { permissionsForRole } from '../auth/permissions'
+import { useAuth } from '../auth/useAuth'
 import {
   cancelReservation as cancelReservationRequest,
+  approveReservationRequest as approveReservationRequestCall,
   commitChange,
   createReservation,
   loadFacility,
   recordEntry as recordEntryRequest,
   recordExit as recordExitRequest,
+  rejectReservationRequest as rejectReservationRequestCall,
   saveSettings,
   updateReservation as updateReservationRequest,
 } from '../api/parkifyApi'
@@ -62,6 +66,8 @@ export function ParkingStateProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<LoadStatus>('loading')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const { user } = useAuth()
+  const granted = useMemo(() => permissionsForRole(user?.role), [user?.role])
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
@@ -75,7 +81,7 @@ export function ParkingStateProvider({ children }: { children: ReactNode }) {
       inFlight = true
       const controller = new AbortController()
       active = controller
-      loadFacility(controller.signal)
+      loadFacility(controller.signal, granted)
         .then((next) => {
           if (cancelled) return
           loaded = true
@@ -101,11 +107,11 @@ export function ParkingStateProvider({ children }: { children: ReactNode }) {
       active?.abort()
       window.clearInterval(timer)
     }
-  }, [reloadKey])
+  }, [reloadKey, granted])
 
   const apply = async (work: () => Promise<unknown>): Promise<ActionResult> => {
     setSubmitting(true)
-    const result = await commitChange(work)
+  const result = await commitChange(work, granted)
     setSubmitting(false)
     if (!result.ok) return result
     setSnapshot(result.snapshot)
@@ -123,6 +129,7 @@ export function ParkingStateProvider({ children }: { children: ReactNode }) {
     submitting,
     dataset,
     reservations: snapshot?.reservations ?? [],
+    reservationRequests: snapshot?.reservationRequests ?? [],
     settings,
     sessions: snapshot?.sessions ?? [],
     reload: () => {
@@ -133,6 +140,8 @@ export function ParkingStateProvider({ children }: { children: ReactNode }) {
     addReservation: (draft: ReservationDraft) => apply(() => createReservation(draft)),
     updateReservation: (id, draft) => apply(() => updateReservationRequest(id, draft)),
     cancelReservation: (id) => apply(() => cancelReservationRequest(id)),
+    approveReservationRequest: (id) => apply(() => approveReservationRequestCall(id)),
+    rejectReservationRequest: (id) => apply(() => rejectReservationRequestCall(id)),
     updateSettings: (next) => apply(() => saveSettings(next)),
     resetSettings: () => settings,
     recordEntry: (plateNumber, spotCode) => apply(() => recordEntryRequest(plateNumber, spotCode)),

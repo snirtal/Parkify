@@ -3,11 +3,14 @@ import { Link } from 'react-router-dom'
 import '../components/dashboard/DailyOccupancyChart.css'
 import '../components/dashboard/GateActivityTable.css'
 import { matchesCodeOrPlate } from '../components/parking-map/searchUtils'
+import { RESERVATIONS_MANAGE, can } from '../auth/permissions'
+import { useAuth } from '../auth/useAuth'
 import { useParkingState } from '../context/useParkingState'
 import type {
   ParkingBay,
   ReservationDraft,
   ReservationItem,
+  ReservationRequestItem,
   ReservationStatus,
 } from '../types/parking'
 import './ReservationsPage.css'
@@ -39,11 +42,18 @@ export function ReservationsPage() {
   const {
     dataset,
     reservations,
+    reservationRequests,
     addReservation,
     updateReservation,
     cancelReservation,
+    approveReservationRequest,
+    rejectReservationRequest,
     submitting,
+    status,
   } = useParkingState()
+  const { user } = useAuth()
+  const canManage = can(user?.role, RESERVATIONS_MANAGE)
+  const [requestError, setRequestError] = useState<string | null>(null)
 
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
@@ -154,22 +164,44 @@ export function ReservationsPage() {
             <span className="dashboard-panel__sim-tag">Live</span>
           </div>
           <p className="dashboard-panel__subtitle">
-            Manage advance parking bookings, scheduled time windows, and bay holds across Deck P2
-            and Deck P1
+            {canManage
+              ? 'Review customer requests, then manage scheduled bookings across Deck P2 and Deck P1'
+              : 'Review customer requests. Approving a request holds a matching bay.'}
           </p>
         </div>
 
-        <button
-          type="button"
-          className="reservations__new-btn"
-          onClick={handleOpenCreate}
-        >
-          <span aria-hidden="true">+</span>
-          <span>New Reservation</span>
-        </button>
+        {canManage ? (
+          <button
+            type="button"
+            className="reservations__new-btn"
+            onClick={handleOpenCreate}
+          >
+            <span aria-hidden="true">+</span>
+            <span>New Reservation</span>
+          </button>
+        ) : null}
       </div>
 
-      {formMode !== 'closed' && (
+      <RequestQueue
+        requests={reservationRequests}
+        loading={status === 'loading'}
+        submitting={submitting}
+        error={requestError}
+        onApprove={(id) => {
+          setRequestError(null)
+          void approveReservationRequest(id).then((result) => {
+            if (!result.ok) setRequestError(result.error)
+          })
+        }}
+        onReject={(id) => {
+          setRequestError(null)
+          void rejectReservationRequest(id).then((result) => {
+            if (!result.ok) setRequestError(result.error)
+          })
+        }}
+      />
+
+      {canManage && formMode !== 'closed' && (
         <form className="reservations__form" onSubmit={handleSubmit} noValidate>
           <div className="reservations__form-head">
             <h3 className="reservations__form-title">
@@ -301,6 +333,8 @@ export function ReservationsPage() {
         </form>
       )}
 
+      {canManage && (
+      <>
       <div className="gate-activity__toolbar">
         <div className="gate-activity__search" role="search">
           <svg
@@ -445,6 +479,97 @@ export function ReservationsPage() {
           </tbody>
         </table>
       </div>
+      </>
+      )}
     </section>
   )
+}
+
+function RequestQueue({
+  requests,
+  loading,
+  submitting,
+  error,
+  onApprove,
+  onReject,
+}: {
+  requests: ReservationRequestItem[]
+  loading: boolean
+  submitting: boolean
+  error: string | null
+  onApprove: (id: string) => void
+  onReject: (id: string) => void
+}) {
+  const pending = requests.filter((request) => request.status === 'Pending')
+  const reviewed = requests.filter((request) => request.status !== 'Pending').slice(0, 8)
+
+  return (
+    <div className="reservations__requests">
+      <div className="reservations__requests-head">
+        <h3 className="reservations__requests-title">Customer requests</h3>
+        <span className="reservations__count">{pending.length} pending</span>
+      </div>
+      {error && (
+        <div className="reservations__error" role="alert">
+          {error}
+        </div>
+      )}
+      {loading && requests.length === 0 ? (
+        <p className="reservations__requests-empty">Loading requests…</p>
+      ) : pending.length === 0 && reviewed.length === 0 ? (
+        <p className="reservations__requests-empty">No reservation requests yet.</p>
+      ) : (
+        <ul className="reservations__request-list">
+          {[...pending, ...reviewed].map((request) => (
+            <li key={request.id} className="reservations__request">
+              <div>
+                <strong className="reservations__request-plate">{request.plateNumber}</strong>
+                <p className="reservations__request-meta">
+                  {request.bayClass} · {formatWhen(request.startsAt)} · {formatDuration(request.durationMinutes)}
+                  {request.spotCode ? ` · ${request.spotCode}` : ''}
+                </p>
+              </div>
+              <div className="reservations__request-actions">
+                <span className={`reservations__status reservations__status--${request.status.toLowerCase()}`}>
+                  {request.status}
+                </span>
+                {request.status === 'Pending' ? (
+                  <>
+                    <button
+                      type="button"
+                      className="reservations__btn-primary"
+                      disabled={submitting}
+                      onClick={() => onApprove(request.id)}
+                    >
+                      Approve
+                    </button>
+                    <button
+                      type="button"
+                      className="reservations__btn-secondary"
+                      disabled={submitting}
+                      onClick={() => onReject(request.id)}
+                    >
+                      Reject
+                    </button>
+                  </>
+                ) : null}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+function formatWhen(value: string): string {
+  return value.replace('T', ' ').slice(0, 16)
+}
+
+function formatDuration(minutes: number): string {
+  const hours = Math.floor(minutes / 60)
+  const rest = minutes % 60
+  if (hours === 0) return `${rest}m`
+  if (rest === 0) return `${hours}h`
+  return `${hours}h ${rest}m`
 }
