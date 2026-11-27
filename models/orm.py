@@ -289,18 +289,61 @@ class GateActivity(Base, TimestampMixin):
     reservation: Mapped[Reservation | None] = relationship(back_populates="gate_activities")
 
 
-class User(Base):
-    """An operator account. Public registration is not available.
+class ReservationRequest(Base, TimestampMixin):
+    """A customer request. It does not hold a spot until it is approved."""
 
-    role is stored for later authorization. admin will have full access.
-    employee will view occupancy and approve reservations, without financial
-    or administrative access. Those checks are not enforced yet.
+    __tablename__ = "reservation_requests"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('Pending', 'Approved', 'Rejected', 'Expired')",
+            name="ck_reservation_requests_status",
+        ),
+        CheckConstraint("ends_at > starts_at", name="ck_reservation_requests_window"),
+        CheckConstraint(
+            "bay_class IN ('Standard', 'EV Fast 150kW', 'VIP Priority', 'Accessible')",
+            name="ck_reservation_requests_bay_class",
+        ),
+        Index("ix_reservation_requests_facility_status", "facility_id", "status"),
+        Index(
+            "uq_reservation_requests_pending_vehicle",
+            "facility_id",
+            "vehicle_id",
+            unique=True,
+            postgresql_where=text("status = 'Pending'"),
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    facility_id: Mapped[str] = mapped_column(ForeignKey("facilities.id"), nullable=False)
+    vehicle_id: Mapped[str] = mapped_column(ForeignKey("vehicles.id"), nullable=False)
+    bay_class: Mapped[str] = mapped_column(String(32), nullable=False)
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), nullable=False)
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    reservation_id: Mapped[str | None] = mapped_column(ForeignKey("reservations.id"))
+    decided_by_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=False))
+
+    vehicle: Mapped[Vehicle] = relationship()
+    reservation: Mapped[Reservation | None] = relationship()
+    decided_by: Mapped[User | None] = relationship()
+
+
+class User(Base):
+    """An operator or machine account. Public registration is not available.
+
+    admin has every permission. employee reviews occupancy and reservation
+    requests. simulator runs the gate and creates requests. Roles are stored
+    on this row and are never taken from a request body.
     """
 
     __tablename__ = "users"
     __table_args__ = (
         UniqueConstraint("email", name="uq_users_email"),
-        CheckConstraint("role IN ('admin', 'employee')", name="ck_users_role"),
+        CheckConstraint(
+            "role IN ('admin', 'employee', 'simulator')",
+            name="ck_users_role",
+        ),
         CheckConstraint("email = lower(email)", name="ck_users_email_normalized"),
         CheckConstraint("char_length(full_name) >= 2", name="ck_users_full_name"),
         CheckConstraint("char_length(password_hash) >= 20", name="ck_users_password_hash"),

@@ -12,7 +12,10 @@ GATE_READ = "gate.read"
 GATE_OPERATE = "gate.operate"
 RESERVATIONS_READ = "reservations.read"
 RESERVATIONS_MANAGE = "reservations.manage"
+RESERVATIONS_REQUESTS_READ = "reservations.requests.read"
+RESERVATIONS_REQUESTS_CREATE = "reservations.requests.create"
 RESERVATIONS_APPROVE = "reservations.approve"
+RESERVATIONS_REJECT = "reservations.reject"
 SETTINGS_READ = "settings.read"
 SETTINGS_MANAGE = "settings.manage"
 PRICING_READ = "pricing.read"
@@ -26,7 +29,10 @@ ALL_PERMISSIONS = frozenset(
         GATE_OPERATE,
         RESERVATIONS_READ,
         RESERVATIONS_MANAGE,
+        RESERVATIONS_REQUESTS_READ,
+        RESERVATIONS_REQUESTS_CREATE,
         RESERVATIONS_APPROVE,
+        RESERVATIONS_REJECT,
         SETTINGS_READ,
         SETTINGS_MANAGE,
         PRICING_READ,
@@ -34,12 +40,28 @@ ALL_PERMISSIONS = frozenset(
     }
 )
 
-# Approval is granted now and has no endpoint until that workflow exists.
-_EMPLOYEE = frozenset({OCCUPANCY_READ, RESERVATIONS_APPROVE})
+_EMPLOYEE = frozenset(
+    {
+        OCCUPANCY_READ,
+        RESERVATIONS_REQUESTS_READ,
+        RESERVATIONS_APPROVE,
+        RESERVATIONS_REJECT,
+    }
+)
+_SIMULATOR = frozenset(
+    {
+        OCCUPANCY_READ,
+        SESSIONS_READ,
+        GATE_OPERATE,
+        RESERVATIONS_READ,
+        RESERVATIONS_REQUESTS_CREATE,
+    }
+)
 
 ROLE_PERMISSIONS = {
     "admin": ALL_PERMISSIONS,
     "employee": _EMPLOYEE,
+    "simulator": _SIMULATOR,
 }
 
 

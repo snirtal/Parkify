@@ -65,6 +65,7 @@ def _hide_committed_activity(session: Session) -> None:
     session.execute(text("DELETE FROM auth_sessions"))
     session.execute(text("DELETE FROM gate_activities"))
     session.execute(text("DELETE FROM parking_sessions"))
+    session.execute(text("DELETE FROM reservation_requests"))
     session.execute(text("DELETE FROM reservations"))
     session.execute(text("DELETE FROM vehicles"))
     session.flush()

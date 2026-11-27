@@ -65,6 +65,19 @@ export interface ApiReservation {
   ends_at: string
 }
 
+export interface ApiReservationRequest {
+  id: string
+  plate_number: string
+  bay_class: string
+  starts_at: string
+  ends_at: string
+  duration_minutes: number
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Expired'
+  reservation_id: string | null
+  spot_code: string | null
+  decided_at: string | null
+}
+
 export interface ApiSettings {
   facility_name: string
   facility_address: string

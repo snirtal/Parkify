@@ -1,5 +1,5 @@
-import type { FacilitySettings, ReservationDraft } from '../types/parking'
-import { permissionsForRole, RESERVATIONS_READ, SESSIONS_READ, GATE_READ, SETTINGS_READ } from '../auth/permissions'
+import type { FacilitySettings, ReservationDraft, ReservationRequestItem } from '../types/parking'
+import { permissionsForRole, RESERVATIONS_READ, RESERVATIONS_REQUESTS_READ, SESSIONS_READ, GATE_READ, SETTINGS_READ } from '../auth/permissions'
 import { FACILITY_ID } from '../config/facility'
 import { apiRequest } from './client'
 import { mapFacility, moneyString, reservationWindow, type FacilitySnapshot } from './mapFacility'
@@ -9,6 +9,7 @@ import type {
   ApiOccupancy,
   ApiOccupancySeries,
   ApiReservation,
+  ApiReservationRequest,
   ApiSession,
   ApiSettings,
 } from './types'
@@ -40,15 +41,34 @@ export async function loadFacility(
         { signal },
       )
     : { has_history: false, points: [] }
-  return mapFacility(
-    occupancy,
-    dashboard,
-    reservationPage.items,
-    settings,
-    sessionPage.items,
-    gatePage.items,
-    series,
-  )
+  const requestPage = granted.has(RESERVATIONS_REQUESTS_READ)
+    ? await apiRequest<{ items: ApiReservationRequest[] }>(`${root}/reservation-requests`, { signal })
+    : { items: [] }
+  return {
+    ...mapFacility(
+      occupancy,
+      dashboard,
+      reservationPage.items,
+      settings,
+      sessionPage.items,
+      gatePage.items,
+      series,
+    ),
+    reservationRequests: requestPage.items.map(mapRequest),
+  }
+}
+
+function mapRequest(request: ApiReservationRequest): ReservationRequestItem {
+  return {
+    id: request.id,
+    plateNumber: request.plate_number,
+    bayClass: request.bay_class,
+    startsAt: request.starts_at,
+    endsAt: request.ends_at,
+    durationMinutes: request.duration_minutes,
+    status: request.status,
+    spotCode: request.spot_code,
+  }
 }
 
 function settingsFromDashboard(dashboard: ApiDashboard): ApiSettings {
@@ -70,6 +90,7 @@ let inFlight = false
 
 export async function commitChange(
   work: () => Promise<unknown>,
+  granted: ReadonlySet<string> = permissionsForRole('admin'),
 ): Promise<{ ok: true; snapshot: FacilitySnapshot } | { ok: false; error: string }> {
   if (inFlight) {
     return { ok: false, error: 'Please wait for the current request to finish.' }
@@ -77,7 +98,7 @@ export async function commitChange(
   inFlight = true
   try {
     await work()
-    return { ok: true, snapshot: await loadFacility() }
+    return { ok: true, snapshot: await loadFacility(undefined, granted) }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'The request failed.'
     return { ok: false, error: message }
@@ -113,6 +134,20 @@ export function updateReservation(id: string, draft: ReservationDraft) {
 export function cancelReservation(id: string) {
   return apiRequest<ApiReservation>(
     `${root}/reservations/${encodeURIComponent(id)}/cancellation`,
+    { method: 'POST', body: {} },
+  )
+}
+
+export function approveReservationRequest(id: string) {
+  return apiRequest<ApiReservationRequest>(
+    `${root}/reservation-requests/${encodeURIComponent(id)}/approval`,
+    { method: 'POST', body: {} },
+  )
+}
+
+export function rejectReservationRequest(id: string) {
+  return apiRequest<ApiReservationRequest>(
+    `${root}/reservation-requests/${encodeURIComponent(id)}/rejection`,
     { method: 'POST', body: {} },
   )
 }

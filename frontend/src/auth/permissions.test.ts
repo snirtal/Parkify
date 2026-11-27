@@ -14,7 +14,7 @@ function visiblePaths(role: string) {
 describe('navigation permissions', () => {
   it('shows every section to an admin and occupancy pages to an employee', () => {
     expect(visiblePaths('admin')).toEqual(NAV_ITEMS.map((item) => item.path))
-    expect(visiblePaths('employee')).toEqual(['/', '/parking-map', '/analytics'])
+    expect(visiblePaths('employee')).toEqual(['/', '/parking-map', '/reservations', '/analytics'])
     expect(visiblePaths('contractor')).toEqual([])
   })
 
@@ -23,10 +23,10 @@ describe('navigation permissions', () => {
     expect(canVisit('employee', '/parking-map')).toBe(true)
     expect(canVisit('employee', '/analytics')).toBe(true)
     expect(canVisit('employee', '/sessions')).toBe(false)
-    expect(canVisit('employee', '/reservations')).toBe(false)
+    expect(canVisit('employee', '/reservations')).toBe(true)
     expect(canVisit('employee', '/settings')).toBe(false)
     expect(canVisit('admin', '/settings')).toBe(true)
+    expect(canVisit('admin', '/reservations')).toBe(true)
     expect(permissionsForRole('employee').has(RESERVATIONS_APPROVE)).toBe(true)
-    expect(canVisit('employee', '/reservations')).toBe(false)
   })
 })

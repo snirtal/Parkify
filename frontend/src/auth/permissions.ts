@@ -6,7 +6,10 @@ export const GATE_READ = 'gate.read'
 export const GATE_OPERATE = 'gate.operate'
 export const RESERVATIONS_READ = 'reservations.read'
 export const RESERVATIONS_MANAGE = 'reservations.manage'
+export const RESERVATIONS_REQUESTS_READ = 'reservations.requests.read'
+export const RESERVATIONS_REQUESTS_CREATE = 'reservations.requests.create'
 export const RESERVATIONS_APPROVE = 'reservations.approve'
+export const RESERVATIONS_REJECT = 'reservations.reject'
 export const SETTINGS_READ = 'settings.read'
 export const SETTINGS_MANAGE = 'settings.manage'
 export const PRICING_READ = 'pricing.read'
@@ -19,7 +22,10 @@ const ALL = [
   GATE_OPERATE,
   RESERVATIONS_READ,
   RESERVATIONS_MANAGE,
+  RESERVATIONS_REQUESTS_READ,
+  RESERVATIONS_REQUESTS_CREATE,
   RESERVATIONS_APPROVE,
+  RESERVATIONS_REJECT,
   SETTINGS_READ,
   SETTINGS_MANAGE,
   PRICING_READ,
@@ -28,7 +34,12 @@ const ALL = [
 
 const ROLE_PERMISSIONS: Record<string, readonly string[]> = {
   admin: ALL,
-  employee: [OCCUPANCY_READ, RESERVATIONS_APPROVE],
+  employee: [
+    OCCUPANCY_READ,
+    RESERVATIONS_REQUESTS_READ,
+    RESERVATIONS_APPROVE,
+    RESERVATIONS_REJECT,
+  ],
 }
 
 export function permissionsForRole(role: string | undefined): ReadonlySet<string> {
@@ -44,7 +55,7 @@ export function routePermission(pathname: string): string | null {
     return OCCUPANCY_READ
   }
   if (pathname.startsWith('/sessions')) return SESSIONS_READ
-  if (pathname.startsWith('/reservations')) return RESERVATIONS_READ
+  if (pathname.startsWith('/reservations')) return RESERVATIONS_REQUESTS_READ
   if (pathname.startsWith('/settings')) return SETTINGS_READ
   return null
 }

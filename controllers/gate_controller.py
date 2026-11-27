@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from flask import Blueprint, jsonify
 
-from controllers.authorization import permission_required
+from controllers.authorization import current_account, permission_required
 from controllers.dependencies import current_services
 from controllers.parsing import (
     identifier,
@@ -21,8 +21,9 @@ from controllers.parsing import (
     query_timestamp,
     required_text,
 )
+from controllers.presentation import omit_financial_fields
 from controllers.serialization import dump
-from services.permissions import GATE_OPERATE, GATE_READ
+from services.permissions import GATE_OPERATE, GATE_READ, PRICING_READ, allows
 from utils.errors import AppError
 
 gate_bp = Blueprint("gate", __name__, url_prefix="/api/facilities/<facility_id>")
@@ -46,7 +47,7 @@ def record_entry(facility_id: str):
         driver_name=driver_name,
         at=at,
     )
-    return jsonify(dump(change)), 201
+    return jsonify(_visible(dump(change))), 201
 
 
 @gate_bp.post("/exits")
@@ -71,7 +72,7 @@ def record_exit(facility_id: str):
         gate_name=gate_name,
         at=at,
     )
-    return jsonify(dump(change)), 200
+    return jsonify(_visible(dump(change))), 200
 
 
 @gate_bp.get("/gate-activity")
@@ -98,3 +99,9 @@ def list_gate_activity(facility_id: str):
         offset=offset,
     )
     return jsonify(dump(page)), 200
+
+
+def _visible(payload: dict) -> dict:
+    if allows(current_account().role, PRICING_READ):
+        return payload
+    return omit_financial_fields(payload)

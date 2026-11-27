@@ -1,6 +1,6 @@
 import {
   OCCUPANCY_READ,
-  RESERVATIONS_READ,
+  RESERVATIONS_REQUESTS_READ,
   SESSIONS_READ,
   SETTINGS_READ,
 } from '../auth/permissions'
@@ -52,10 +52,10 @@ export const NAV_ITEMS: NavItem[] = [
   {
     path: '/reservations',
     label: 'Reservations',
-    subtitle: 'Scheduled parking bookings and upcoming arrivals',
+    subtitle: 'Customer requests and scheduled parking bookings',
     icon: 'reservations',
     section: 'Management',
-    permission: RESERVATIONS_READ,
+    permission: RESERVATIONS_REQUESTS_READ,
   },
   {
     path: '/analytics',

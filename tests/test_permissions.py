@@ -36,7 +36,9 @@ def test_every_api_route_is_public_or_protected(app):
             continue
         used.update(permissions)
     assert unprotected == []
-    assert RESERVATIONS_APPROVE not in used
     assert "occupancy.read" in used
     assert "settings.manage" in used
     assert "pricing.quote" in used
+    assert "reservations.approve" in used
+    assert "reservations.reject" in used
+    assert "reservations.requests.create" in used

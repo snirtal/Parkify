@@ -270,6 +270,46 @@ class ReservationService:
         logger.info("refresh_lifecycle facility=%s count=%s", facility_id, len(views))
         return views
 
+    def book_available_bay(
+        self,
+        uow,
+        facility_id: str,
+        plate_number: str,
+        bay_class: str,
+        starts_at: datetime,
+        ends_at: datetime,
+    ) -> ReservationView:
+        """Hold the first free spot of this type. The caller owns the transaction."""
+        repos = uow.repositories
+        candidates = [
+            spot
+            for spot in repos.spots.list_for_facility(facility_id)
+            if spot.bay_class == bay_class and not spot.maintenance_reason
+        ]
+        if not candidates:
+            raise ConflictError(
+                "No parking space of that type is available.",
+                code="insufficient_availability",
+            )
+        locked = _lock_sorted(candidates, lambda spot: repos.spots.get_for_update(spot.id))
+        for spot in locked.values():
+            try:
+                return self._create(
+                    uow,
+                    facility_id,
+                    plate_number,
+                    spot.code,
+                    starts_at,
+                    ends_at,
+                    None,
+                )
+            except ConflictError:
+                continue
+        raise ConflictError(
+            "No parking space of that type is available for the requested time.",
+            code="insufficient_availability",
+        )
+
     def _ensure_spot_available(self, repos, spot, starts_at, ends_at, moment, exclude_id):
         if spot.maintenance_reason:
             raise ConflictError(

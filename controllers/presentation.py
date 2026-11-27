@@ -14,6 +14,7 @@ FINANCIAL_KEYS = frozenset(
         "amount",
         "daily_maximum",
         "quote",
+        "paid_until",
     }
 )
 

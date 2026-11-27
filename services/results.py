@@ -141,6 +141,22 @@ class ReservationView:
 
 
 @dataclass(frozen=True)
+class ReservationRequestView:
+    """A customer request. Approved requests also name the spot that was held."""
+
+    id: str
+    plate_number: str
+    bay_class: str
+    starts_at: datetime
+    ends_at: datetime
+    duration_minutes: int
+    status: str
+    reservation_id: str | None
+    spot_code: str | None
+    decided_at: datetime | None
+
+
+@dataclass(frozen=True)
 class FacilitySettingsView:
     facility_id: str
     facility_name: str

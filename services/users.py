@@ -1,8 +1,9 @@
 """Create operator accounts. There is no public registration.
 
-admin has every permission. employee can read occupancy and will approve
-reservation requests when that workflow exists. Employees do not receive
-financial or administrative permissions.
+admin has every permission. employee can read occupancy and review reservation
+requests. simulator is a machine account for gate traffic and new requests.
+Employees and the simulator do not receive financial or administrative
+permissions.
 """
 
 from __future__ import annotations
@@ -22,7 +23,8 @@ logger = logging.getLogger("parkify.service.users")
 
 ADMIN_ROLE = "admin"
 EMPLOYEE_ROLE = "employee"
-USER_ROLES = frozenset({ADMIN_ROLE, EMPLOYEE_ROLE})
+SIMULATOR_ROLE = "simulator"
+USER_ROLES = frozenset({ADMIN_ROLE, EMPLOYEE_ROLE, SIMULATOR_ROLE})
 PASSWORD_MAX_LENGTH = 128
 _EMAIL = re.compile(r"^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$")
 
@@ -116,10 +118,10 @@ def _full_name(value: object) -> str:
 
 def _role(value: object) -> str:
     if not isinstance(value, str):
-        raise ValidationError("Role must be admin or employee.")
+        raise ValidationError("Role must be admin, employee, or simulator.")
     cleaned = value.strip().lower()
     if cleaned not in USER_ROLES:
-        raise ValidationError("Role must be admin or employee.")
+        raise ValidationError("Role must be admin, employee, or simulator.")
     return cleaned
 
 

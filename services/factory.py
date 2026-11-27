@@ -10,6 +10,7 @@ from services.gate import GateService
 from services.parking import ParkingService
 from services.pricing import PricingService
 from services.reservations import ReservationService
+from services.reservation_requests import ReservationRequestService
 from services.sessions import ParkingSessionService
 from services.settings import SettingsService
 from services.passwords import Argon2PasswordHasher, PasswordHasherProtocol
@@ -26,6 +27,7 @@ class Services:
     parking: ParkingService
     sessions: ParkingSessionService
     reservations: ReservationService
+    reservation_requests: ReservationRequestService
     pricing: PricingService
     gate: GateService
     dashboard: DashboardService
@@ -64,10 +66,18 @@ def build_services(
     tokens = TokenService(secret=settings.jwt_secret, expiration_minutes=settings.jwt_expiration_minutes)
     pricing = PricingService()
     sessions = ParkingSessionService(uow_factory, resolved_clock, resolved_ids, pricing)
+    reservations = ReservationService(uow_factory, resolved_clock, resolved_ids)
     return Services(
         parking=ParkingService(uow_factory, resolved_clock),
         sessions=sessions,
-        reservations=ReservationService(uow_factory, resolved_clock, resolved_ids),
+        reservations=reservations,
+        reservation_requests=ReservationRequestService(
+            uow_factory,
+            resolved_clock,
+            resolved_ids,
+            reservations,
+            request_limit=settings.reservation_request_limit,
+        ),
         pricing=pricing,
         gate=GateService(sessions, uow_factory, resolved_clock),
         dashboard=DashboardService(uow_factory, resolved_clock),

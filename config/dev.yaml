@@ -22,6 +22,9 @@ auth:
   login_max_attempts: 5
   login_window_seconds: 900
 
+reservations:
+  request_limit: 8
+
 cors:
   origins:
     - http://localhost:5173

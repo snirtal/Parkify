@@ -33,6 +33,7 @@ class Settings:
     cookie_samesite: str = "Lax"
     login_max_attempts: int = 5
     login_window_seconds: int = 900
+    reservation_request_limit: int = 8
 
     @property
     def is_production(self) -> bool:
@@ -112,6 +113,12 @@ def build_settings(environment: str | None = None) -> Settings:
             "login_window_seconds",
             minimum=60,
             maximum=86_400,
+        ),
+        reservation_request_limit=_bounded_int(
+            (config.get("reservations") or {}).get("request_limit", 8),
+            "reservation_request_limit",
+            minimum=1,
+            maximum=100,
         ),
     )
 

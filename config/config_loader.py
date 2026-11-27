@@ -73,6 +73,7 @@ def apply_env_overrides(raw: dict[str, Any]) -> dict[str, Any]:
     logging_cfg = dict(raw.get("logging") or {})
     cors = dict(raw.get("cors") or {})
     auth = dict(raw.get("auth") or {})
+    reservations = dict(raw.get("reservations") or {})
 
     if secret := os.getenv("SECRET_KEY"):
         app["secret_key"] = secret
@@ -100,12 +101,15 @@ def apply_env_overrides(raw: dict[str, Any]) -> dict[str, Any]:
         auth["login_max_attempts"] = login_max_attempts
     if login_window := os.getenv("LOGIN_WINDOW_SECONDS"):
         auth["login_window_seconds"] = login_window
+    if request_limit := os.getenv("RESERVATION_REQUEST_LIMIT"):
+        reservations["request_limit"] = request_limit
 
     return {
         "app": app,
         "logging": logging_cfg,
         "cors": cors,
         "auth": auth,
+        "reservations": reservations,
         "database_url": os.getenv("DATABASE_URL", "").strip(),
         "raw": raw,
     }

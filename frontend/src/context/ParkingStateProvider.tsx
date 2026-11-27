@@ -4,11 +4,13 @@ import { permissionsForRole } from '../auth/permissions'
 import { useAuth } from '../auth/useAuth'
 import {
   cancelReservation as cancelReservationRequest,
+  approveReservationRequest as approveReservationRequestCall,
   commitChange,
   createReservation,
   loadFacility,
   recordEntry as recordEntryRequest,
   recordExit as recordExitRequest,
+  rejectReservationRequest as rejectReservationRequestCall,
   saveSettings,
   updateReservation as updateReservationRequest,
 } from '../api/parkifyApi'
@@ -109,7 +111,7 @@ export function ParkingStateProvider({ children }: { children: ReactNode }) {
 
   const apply = async (work: () => Promise<unknown>): Promise<ActionResult> => {
     setSubmitting(true)
-    const result = await commitChange(work)
+  const result = await commitChange(work, granted)
     setSubmitting(false)
     if (!result.ok) return result
     setSnapshot(result.snapshot)
@@ -127,6 +129,7 @@ export function ParkingStateProvider({ children }: { children: ReactNode }) {
     submitting,
     dataset,
     reservations: snapshot?.reservations ?? [],
+    reservationRequests: snapshot?.reservationRequests ?? [],
     settings,
     sessions: snapshot?.sessions ?? [],
     reload: () => {
@@ -137,6 +140,8 @@ export function ParkingStateProvider({ children }: { children: ReactNode }) {
     addReservation: (draft: ReservationDraft) => apply(() => createReservation(draft)),
     updateReservation: (id, draft) => apply(() => updateReservationRequest(id, draft)),
     cancelReservation: (id) => apply(() => cancelReservationRequest(id)),
+    approveReservationRequest: (id) => apply(() => approveReservationRequestCall(id)),
+    rejectReservationRequest: (id) => apply(() => rejectReservationRequestCall(id)),
     updateSettings: (next) => apply(() => saveSettings(next)),
     resetSettings: () => settings,
     recordEntry: (plateNumber, spotCode) => apply(() => recordEntryRequest(plateNumber, spotCode)),

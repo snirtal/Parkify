@@ -16,6 +16,10 @@ from repositories.facilities import (
 from repositories.floors import FloorRepository, SqlAlchemyFloorRepository
 from repositories.gate_activities import GateActivityRepository, SqlAlchemyGateActivityRepository
 from repositories.reservations import ReservationRepository, SqlAlchemyReservationRepository
+from repositories.reservation_requests import (
+    ReservationRequestRepository,
+    SqlAlchemyReservationRequestRepository,
+)
 from repositories.sessions import ParkingSessionRepository, SqlAlchemyParkingSessionRepository
 from repositories.spots import ParkingSpotRepository, SqlAlchemyParkingSpotRepository
 from repositories.users import SqlAlchemyUserRepository, UserRepository
@@ -35,6 +39,7 @@ class Repositories:
     vehicles: VehicleRepository
     sessions: ParkingSessionRepository
     reservations: ReservationRepository
+    reservation_requests: ReservationRequestRepository
     gate_activities: GateActivityRepository
     users: UserRepository
     auth_sessions: AuthSessionRepository
@@ -51,6 +56,7 @@ def build_repositories(session: Session) -> Repositories:
         vehicles=SqlAlchemyVehicleRepository(session),
         sessions=SqlAlchemyParkingSessionRepository(session),
         reservations=SqlAlchemyReservationRepository(session),
+        reservation_requests=SqlAlchemyReservationRequestRepository(session),
         gate_activities=SqlAlchemyGateActivityRepository(session),
         users=SqlAlchemyUserRepository(session),
         auth_sessions=SqlAlchemyAuthSessionRepository(session),
